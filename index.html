@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#04060a">
+<title>Robot K40</title>
+<style>
+/* VOICE: một sinh vật nhỏ, vui tính
+   IDEA: mặt robot kiểu Cozmo trên màn điện thoại
+   PICTURE: đôi mắt phát sáng chiếm gần hết màn hình
+   COLOUR/TYPE: nền đen xanh, mắt xanh ngọc; Be Vietnam Pro cho bảng cài đặt
+   LAYOUT: mặt toàn màn hình, cài đặt là lớp phủ ẩn */
+:root{--bg:#04060a;--eye:#5ef2ff;--ink:#e8f6ff;--muted:#8aa4b4;--panel:#0d1620;--line:#20303e;--acc:#5ef2ff}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+  font:16px/1.5 "Be Vietnam Pro",system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#cap{position:fixed;left:50%;bottom:4vh;transform:translateX(-50%);max-width:86vw;text-align:center;
+  font-size:clamp(14px,2.6vw,22px);color:var(--ink);opacity:0;transition:opacity .4s;pointer-events:none;text-wrap:balance}
+#cap.on{opacity:.85}
+#toast{position:fixed;left:50%;top:5vh;transform:translateX(-50%);background:#132331;border:1px solid var(--line);
+  padding:10px 16px;border-radius:12px;max-width:88vw;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.on{opacity:1}
+#hint{position:fixed;inset:auto 0 3vh 0;text-align:center;color:var(--muted);font-size:clamp(13px,2.2vw,17px);transition:opacity 1s;pointer-events:none}
+#set{position:fixed;inset:0;background:rgba(2,4,8,.92);display:none;overflow:auto;touch-action:pan-y;-webkit-user-select:text;user-select:text}
+#set.on{display:block}
+.card{max-width:720px;margin:0 auto;padding:24px 20px 40px}
+.card h2{font-size:26px;line-height:1.1;margin:4px 0 14px;font-weight:600}
+.row{display:grid;gap:6px;margin:14px 0}
+.row label{font-size:14px;color:var(--muted)}
+input,select,textarea{font:16px/1.4 inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.chk{display:flex;gap:10px;align-items:center;margin:10px 0;font-size:15px}
+.chk input{width:22px;height:22px;flex:none}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+button{font:500 16px inherit;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+button.pri{background:var(--acc);color:#03222a;border-color:var(--acc)}
+.note{font-size:13px;color:var(--muted)}
+.tel{font-size:14px;color:var(--muted);margin-top:8px}
+a{color:var(--acc)}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="cap"></div>
+<div id="toast"></div>
+<div id="hint">Chạm 2 lần để nói chuyện · xoa nhẹ để vuốt ve · giữ 3 giây ở góc trên bên trái để mở cài đặt</div>
+
+<div id="set" role="dialog" aria-label="Cài đặt robot">
+ <div class="card">
+  <h2>Cài đặt robot</h2>
+  <div class="row"><label for="sName">Tên robot</label><input id="sName" autocomplete="off"></div>
+  <div class="row"><label for="sKey">Khóa API Gemini (lấy miễn phí ở aistudio.google.com)</label><input id="sKey" type="password" autocomplete="off" spellcheck="false"></div>
+  <div class="row"><label for="sModel">Mô hình trò chuyện</label><input id="sModel" spellcheck="false"></div>
+  <div class="row"><label for="sVoice">Giọng</label>
+   <select id="sVoice"><option>Puck</option><option>Kore</option><option>Aoede</option><option>Leda</option><option>Zephyr</option><option>Charon</option><option>Fenrir</option><option>Orus</option></select></div>
+  <div class="row"><label for="sMode">Cách nói chuyện</label>
+   <select id="sMode"><option value="free">Rảnh tay: cứ nói, robot tự nghe</option><option value="ptt">Giữ màn hình để nói, thả ra robot trả lời</option></select></div>
+  <label class="chk"><input type="checkbox" id="sBarge"> Cho phép ngắt lời khi robot đang nói (dễ bị robot tự nghe chính nó)</label>
+  <label class="chk"><input type="checkbox" id="sCap"> Hiện phụ đề</label>
+  <label class="chk"><input type="checkbox" id="sTouchAI"> Robot nói khi bị chạm (lúc đang trò chuyện)</label>
+  <div class="row"><label for="sFam">Robot nên biết gì về gia đình (tên mọi người, sở thích, ngày đặc biệt…)</label><textarea id="sFam" placeholder="Ví dụ: Bố tên Hùng, thích bóng đá. Mẹ tên Lan. Bé Na 6 tuổi, thích khủng long."></textarea></div>
+  <div class="btns"><button class="pri" id="bSave">Lưu và đóng</button><button id="bBle">Kết nối thân xe</button><button id="bTest">Thử nói chuyện</button></div>
+  <div class="tel" id="tel">Thân xe: chưa kết nối</div>
+  <p class="note">Khóa API chỉ lưu trong trình duyệt của máy này. Đừng chia sẻ link trang có sẵn khóa cho người ngoài.</p>
+ </div>
+</div>
+
+<script>
+{
+const $ = s => document.querySelector(s);
+const now = () => performance.now();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------------- Cài đặt ---------------- */
+const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: ''};
+let S = {...DEF};
+try { S = {...DEF, ...JSON.parse(localStorage.getItem('k40robot') || '{}')}; } catch (e) {}
+const saveS = () => { try { localStorage.setItem('k40robot', JSON.stringify(S)); } catch (e) {} };
+
+/* ---------------- Tiện ích hiển thị ---------------- */
+let toastT = 0;
+function toast(t, ms = 3500) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms); }
+let capT = 0;
+function caption(t, ms = 4000) { if (!S.cap) return; const el = $('#cap'); el.textContent = t; el.classList.add('on'); clearTimeout(capT); capT = setTimeout(() => el.classList.remove('on'), ms); }
+setTimeout(() => $('#hint').style.opacity = 0, 7000);
+
+/* ---------------- Âm thanh ---------------- */
+let AC = null;
+function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }
+function chirp(f0, f1, dur, type = 'sine', vol = .18, delay = 0) {
+  try {
+    const c = ac(), t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .015); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .05);
+  } catch (e) {}
+}
+const SFX = {
+  giggle() { [0, .11, .22].forEach((d, i) => chirp(700 + i * 120, 1150 + i * 120, .09, 'sine', .16, d)); },
+  boop() { chirp(520, 820, .09, 'triangle', .2); },
+  ouch() { chirp(950, 260, .28, 'square', .07); },
+  yawn() { chirp(420, 180, .8, 'triangle', .15); },
+  wake() { chirp(300, 900, .25, 'sine', .15); chirp(600, 1200, .15, 'sine', .12, .25); },
+  purr() { for (let i = 0; i < 4; i++) chirp(900, 1300, .07, 'sine', .1, i * .09); },
+  hmph() { chirp(380, 300, .18, 'sawtooth', .06); },
+  sleep() { chirp(600, 250, .5, 'sine', .1); }
+};
+let viVoice = null;
+function pickVoice() { try { viVoice = speechSynthesis.getVoices().find(v => /vi/i.test(v.lang)) || null; } catch (e) {} }
+try { speechSynthesis.onvoiceschanged = pickVoice; pickVoice(); } catch (e) {}
+function say(t) { if (live.ready || !viVoice) return; try { const u = new SpeechSynthesisUtterance(t); u.voice = viVoice; u.lang = viVoice.lang; u.pitch = 1.6; u.rate = 1.1; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {} }
+
+/* ---------------- Mặt ---------------- */
+const cv = $('#cv'), cx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+addEventListener('resize', resize); resize();
+
+const EXPR = {
+  neutral:  {open: 1,   tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0},
+  happy:    {open: 1,   tin: 0,    tout: 0,   happy: .5,  scale: 1.02, dy: -.04},
+  love:     {open: 1,   tin: 0,    tout: 0,   happy: .78, scale: 1.04, dy: -.05},
+  sad:      {open: .8,  tin: -.05, tout: .32, happy: 0,   scale: .95,  dy: .07},
+  surprised:{open: 1.12,tin: 0,    tout: 0,   happy: 0,   scale: 1.16, dy: -.03},
+  angry:    {open: .78, tin: .36,  tout: 0,   happy: 0,   scale: .97,  dy: .02},
+  sleepy:   {open: .34, tin: 0,    tout: .1,  happy: 0,   scale: 1,    dy: .06},
+  sleep:    {open: .04, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: .1},
+  thinking: {open: .85, tin: .06,  tout: 0,   happy: 0,   scale: .98,  dy: 0},
+  wince:    {open: .12, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0},
+  shy:      {open: .9,  tin: 0,    tout: .08, happy: .35, scale: .94,  dy: .05}
+};
+const F = {open: 1, tin: 0, tout: 0, happy: 0, scale: 1, dy: 0, gx: 0, gy: 0, wince: 0, bounce: 0};
+const T = {gx: 0, gy: 0};
+let expr = 'neutral', exprUntil = 0, blinkAt = now() + 2000, blinkT = -1;
+let particles = [];
+let nodAnim = null;
+
+function baseExpr() {
+  if (mood.sulkUntil > now()) return 'angry';
+  if (state.sleep) return 'sleep';
+  const idle = now() - state.lastTouch;
+  if (!live.ready && idle > 60000) return 'sleepy';
+  if (mood.love > 3) return 'happy';
+  return 'neutral';
+}
+function setExpr(name, ms = 2500) { if (!EXPR[name]) name = 'neutral'; expr = name; exprUntil = now() + ms; if (name === 'love') burst('heart', 4); if (name === 'sad') burst('tear', 1); }
+function burst(kind, n) { for (let i = 0; i < n; i++) particles.push({kind, x: rand(-1, 1), y: 0, t: 0, life: kind === 'tear' ? 1.6 : 1.8, side: Math.random() < .5 ? -1 : 1, d: i * .18}); }
+function nod(kind) { nodAnim = {kind, t: 0}; }
+
+function roundRect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
+function heart(x, y, s) { cx.beginPath(); cx.moveTo(x, y + s * .3); cx.bezierCurveTo(x, y, x - s * .5, y, x - s * .5, y + s * .3); cx.bezierCurveTo(x - s * .5, y + s * .6, x, y + s * .8, x, y + s); cx.bezierCurveTo(x, y + s * .8, x + s * .5, y + s * .6, x + s * .5, y + s * .3); cx.bezierCurveTo(x + s * .5, y, x, y, x, y + s * .3); cx.fill(); }
+
+function eyeGeom() {
+  const ew = Math.min(W * .19, H * .36), eh = ew * 1.18, gap = ew * .62;
+  return {ew, eh, cy: H * .47, lx: W / 2 - gap / 2 - ew / 2, rx: W / 2 + gap / 2 + ew / 2};
+}
+function drawEye(cxp, cyp, side, g, blink) {
+  const s = F.scale * (1 + F.bounce * .06), w = g.ew * s;
+  let open = F.open * blink * (expr === 'thinking' && side < 0 ? .72 : 1);
+  const h = Math.max(4, g.eh * s * open * (1 + F.bounce * .1));
+  const x = cxp + F.gx * g.ew * .42 - w / 2, y = cyp + F.gy * g.eh * .3 + F.dy * g.eh - h / 2;
+  if (F.wince > .5) {
+    cx.strokeStyle = getEye(); cx.lineWidth = g.ew * .13; cx.lineCap = 'round'; cx.lineJoin = 'round';
+    const m = side < 0 ? 1 : -1, xm = cxp, a = g.ew * .32, b = g.eh * .2;
+    cx.beginPath(); cx.moveTo(xm - m * a, cyp - b); cx.lineTo(xm + m * a, cyp); cx.lineTo(xm - m * a, cyp + b); cx.stroke(); return;
+  }
+  cx.fillStyle = getEye(); roundRect(x, y, w, h, Math.min(w, h) * .32); cx.fill();
+  cx.fillStyle = '#04060a';
+  const inner = side < 0 ? x + w : x, outer = side < 0 ? x : x + w;
+  const yin = y + F.tin * g.eh * .55, yout = y + F.tout * g.eh * .55;
+  if (F.tin > .01 || F.tout > .01) {
+    const lineY = xx => yout + (yin - yout) * (xx - outer) / (inner - outer);
+    const xa = x - 10, xb = x + w + 10;
+    cx.beginPath(); cx.moveTo(xa, y - 30); cx.lineTo(xb, y - 30); cx.lineTo(xb, lineY(xb)); cx.lineTo(xa, lineY(xa)); cx.closePath(); cx.fill();
+  }
+  if (F.happy > .01) { cx.beginPath(); cx.ellipse(x + w / 2, y + h + h * .62 - F.happy * h * .78, w * .78, h * .62, 0, 0, Math.PI * 2); cx.fill(); }
+}
+let eyeColor = '#5ef2ff';
+function getEye() { return eyeColor; }
+
+function drawParticles(g, dt) {
+  particles = particles.filter(p => (p.t += dt) < p.life + p.d);
+  for (const p of particles) {
+    const t = p.t - p.d; if (t < 0) continue;
+    const a = 1 - t / p.life;
+    if (p.kind === 'heart') { cx.globalAlpha = a; cx.fillStyle = '#ff7aa8'; heart(W / 2 + p.x * g.ew * 1.4, g.cy - g.eh * .7 - t * g.eh * .9, g.ew * .16); }
+    if (p.kind === 'tear') { cx.globalAlpha = a; cx.fillStyle = '#7fc8ff'; const ex = p.side < 0 ? g.lx - g.ew * .35 : g.rx + g.ew * .35; cx.beginPath(); cx.arc(ex, g.cy + g.eh * .35 + t * g.eh * .7, g.ew * .06, 0, Math.PI * 2); cx.fill(); }
+    if (p.kind === 'z') { cx.globalAlpha = a; cx.fillStyle = '#8aa4b4'; cx.font = `600 ${g.ew * (.18 + t * .08)}px system-ui`; cx.fillText('z', g.rx + g.ew * .6 + t * 30, g.cy - g.eh * .5 - t * 40); }
+    if (p.kind === 'q') { cx.globalAlpha = a; cx.fillStyle = '#ffd166'; cx.font = `700 ${g.ew * .3}px system-ui`; cx.fillText('?', g.rx + g.ew * .55, g.cy - g.eh * .55 - t * 20); }
+    if (p.kind === 'bang') { cx.globalAlpha = a; cx.fillStyle = '#ff8f6b'; cx.font = `800 ${g.ew * .3}px system-ui`; cx.fillText('!', g.rx + g.ew * .6, g.cy - g.eh * .6); }
+  }
+  cx.globalAlpha = 1;
+}
+function drawStatus(g) {
+  const r = Math.max(4, g.ew * .035), y = g.cy + g.eh * .78;
+  let col = null, n = 0;
+  if (live.connecting) { col = '#ffb347'; n = 3; }
+  else if (live.ready && player.speaking()) col = null;
+  else if (live.ready && micOpen()) { col = '#5ef2a0'; n = 3; }
+  if (!col) return;
+  const pulse = live.level;
+  for (let i = 0; i < n; i++) {
+    const k = live.connecting ? (Math.sin(now() / 200 - i) + 1) / 2 : clamp(pulse * 6 - i * .3, .25, 1);
+    cx.globalAlpha = .35 + .65 * k; cx.fillStyle = col; cx.beginPath(); cx.arc(W / 2 + (i - 1) * r * 3.4, y, r * (1 + .5 * k), 0, Math.PI * 2); cx.fill();
+  }
+  cx.globalAlpha = 1;
+}
+
+let last = now();
+function frame() {
+  const t = now(), dt = Math.min(.05, (t - last) / 1000); last = t;
+  if (t > exprUntil) expr = baseExpr();
+  const E = EXPR[expr], k = 1 - Math.exp(-dt * 11);
+  for (const key of ['open', 'tin', 'tout', 'happy', 'scale', 'dy']) F[key] += (E[key] - F[key]) * k;
+  F.wince += ((expr === 'wince' ? 1 : 0) - F.wince) * k * 1.5;
+  idleGaze(t);
+  let ngx = T.gx, ngy = T.gy;
+  if (nodAnim) { nodAnim.t += dt; const p = nodAnim.t / 1.1; if (p >= 1) nodAnim = null; else { const w = Math.sin(p * Math.PI * 4) * (1 - p); if (nodAnim.kind === 'yes') ngy += w * .9; else ngx += w * 1.1; } }
+  F.gx += (ngx - F.gx) * (1 - Math.exp(-dt * 9)); F.gy += (ngy - F.gy) * (1 - Math.exp(-dt * 9));
+  const lv = player.level(); F.bounce += (lv - F.bounce) * (1 - Math.exp(-dt * 20));
+  let blink = 1;
+  if (t > blinkAt && blinkT < 0 && expr !== 'sleep' && expr !== 'wince') blinkT = 0;
+  if (blinkT >= 0) { blinkT += dt; const p = blinkT / .16; blink = p >= 1 ? 1 : .06 + .94 * Math.abs(Math.cos(p * Math.PI)); if (p >= 1) { blinkT = -1; blinkAt = t + rand(1800, 5500) * (Math.random() < .15 ? .1 : 1); } }
+  if (expr === 'sleep' && Math.random() < dt * .7) burst('z', 1);
+  cx.fillStyle = '#04060a'; cx.fillRect(0, 0, W, H);
+  const g = eyeGeom();
+  drawEye(g.lx, g.cy, -1, g, blink); drawEye(g.rx, g.cy, 1, g, blink);
+  drawParticles(g, dt); drawStatus(g); drawHold(t);
+  robotTick(t);
+  liveTick(t);
+  requestAnimationFrame(frame);
+}
+
+let nextGlance = 0;
+function idleGaze(t) {
+  if (touch.follow) return;
+  if (mood.sulkUntil > t) { T.gx = mood.sulkSide; T.gy = .15; return; }
+  if (player.speaking() || (live.ready && micOpen())) { if (t > nextGlance) { T.gx = rand(-.15, .15); T.gy = rand(-.1, .05); nextGlance = t + rand(1500, 3000); } return; }
+  if (t > nextGlance) { const big = Math.random() < .3; T.gx = big ? rand(-.9, .9) : rand(-.3, .3); T.gy = big ? rand(-.5, .4) : rand(-.15, .15); nextGlance = t + rand(1200, 4200); }
+}
+
+/* ---------------- Tâm trạng ---------------- */
+const mood = {love: 0, annoy: 0, sulkUntil: 0, sulkSide: .9};
+const state = {sleep: false, lastTouch: now()};
+setInterval(() => { mood.love = Math.max(0, mood.love - .15); mood.annoy = Math.max(0, mood.annoy - .1);
+  if (!live.ready && !state.sleep && now() - state.lastTouch > 120000) { state.sleep = true; SFX.sleep(); } }, 1000);
+
+/* ---------------- Cảm ứng ---------------- */
+const touch = {down: false, x0: 0, y0: 0, t0: 0, path: 0, rev: 0, lastDx: 0, lastX: 0, lastY: 0, moved: false, follow: false, pressT: 0, ptt: false, corner: 0, lastTap: 0, tapTimer: 0, petAt: 0};
+function inEye(x, y) { const g = eyeGeom(); return [g.lx, g.rx].some(ex => Math.abs(x - ex) < g.ew * .6 && Math.abs(y - g.cy) < g.eh * .6); }
+function wakeIfSleeping() { if (!state.sleep) return false; state.sleep = false; SFX.yawn(); setExpr('sleepy', 1200); setTimeout(() => { setExpr('surprised', 600); SFX.wake(); }, 1300); return true; }
+function poked() { state.lastTouch = now(); }
+
+let holdDraw = null;
+function drawHold(t) {
+  if (!holdDraw) return; const p = clamp((t - holdDraw.t0) / 2500, 0, 1);
+  cx.strokeStyle = '#5ef2ff'; cx.globalAlpha = .7; cx.lineWidth = 4; cx.beginPath(); cx.arc(holdDraw.x, holdDraw.y, 34, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); cx.stroke(); cx.globalAlpha = 1;
+}
+
+cv.addEventListener('pointerdown', e => {
+  firstGesture(); ac();
+  Object.assign(touch, {down: true, x0: e.clientX, y0: e.clientY, t0: now(), path: 0, rev: 0, lastDx: 0, lastX: e.clientX, lastY: e.clientY, moved: false, follow: false});
+  cv.setPointerCapture(e.pointerId);
+  const inCorner = e.clientX < W * .18 && e.clientY < H * .25;
+  if (inCorner) { holdDraw = {x: e.clientX, y: e.clientY, t0: now()}; touch.corner = setTimeout(() => { holdDraw = null; openSettings(); }, 2500); }
+  else touch.pressT = setTimeout(() => { if (!touch.moved) startPTT(); }, 600);
+});
+cv.addEventListener('pointermove', e => {
+  if (!touch.down) return;
+  const dx = e.clientX - touch.lastX, dy = e.clientY - touch.lastY;
+  touch.path += Math.hypot(dx, dy);
+  if (Math.hypot(e.clientX - touch.x0, e.clientY - touch.y0) > 14) { touch.moved = true; clearTimeout(touch.pressT); clearTimeout(touch.corner); holdDraw = null; }
+  if (Math.abs(dx) > 2) { if (touch.lastDx && Math.sign(dx) !== Math.sign(touch.lastDx)) touch.rev++; touch.lastDx = dx; }
+  touch.lastX = e.clientX; touch.lastY = e.clientY;
+  if (touch.moved && !touch.ptt) {
+    touch.follow = true; T.gx = clamp((e.clientX / W - .5) * 2.2, -1, 1); T.gy = clamp((e.clientY / H - .47) * 2.2, -1, 1);
+    if (touch.rev >= 2 && touch.path > 220 && now() - touch.petAt > 900) { touch.petAt = now(); onPet(); }
+  }
+});
+function endPointer(e) {
+  if (!touch.down) return; touch.down = false; clearTimeout(touch.pressT); clearTimeout(touch.corner); holdDraw = null;
+  const dur = now() - touch.t0, dx = e.clientX - touch.x0, dy = e.clientY - touch.y0;
+  setTimeout(() => touch.follow = false, 900);
+  if (touch.ptt) { stopPTT(); return; }
+  poked();
+  if (!touch.moved && dur < 450) { onTapRaw(e.clientX, e.clientY); return; }
+  if (touch.rev < 2 && Math.abs(dx) > 90 && Math.abs(dx) > Math.abs(dy) * 1.6 && dur < 600) { onSwipe(dx > 0 ? 1 : -1); return; }
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+
+function onTapRaw(x, y) {
+  const t = now();
+  if (t - touch.lastTap < 320) { clearTimeout(touch.tapTimer); touch.lastTap = 0; onDoubleTap(); return; }
+  touch.lastTap = t;
+  touch.tapTimer = setTimeout(() => onTap(x, y), 320);
+}
+function onTap(x, y) {
+  if (wakeIfSleeping()) return;
+  if (mood.sulkUntil > now()) { SFX.hmph(); say('Hứ!'); mood.sulkSide *= -1; return; }
+  if (inEye(x, y)) {
+    setExpr('wince', 900); SFX.ouch(); mood.annoy += 1;
+    if (mood.annoy >= 3) { mood.sulkUntil = now() + 15000; mood.sulkSide = Math.random() < .5 ? -.9 : .9; setTimeout(() => { say('Hứ, không chơi nữa!'); SFX.hmph(); }, 950); sendEvent('Người dùng chọc vào mắt bạn nhiều lần, bạn đang dỗi'); }
+    else { say('Ui da!'); sendEvent('Người dùng vừa chọc vào mắt bạn'); }
+    return;
+  }
+  const r = Math.random();
+  if (r < .4) { blinkT = 0; SFX.boop(); T.gx = clamp((x / W - .5) * 2, -1, 1); T.gy = clamp((y / H - .47) * 2, -1, 1); nextGlance = now() + 1500; }
+  else if (r < .75) { setExpr('happy', 1400); SFX.giggle(); say('Hihi'); }
+  else { setExpr('surprised', 900); burst('bang', 1); SFX.boop(); }
+  sendEvent('Người dùng vừa chạm nhẹ vào mặt bạn');
+}
+function onDoubleTap() {
+  state.lastTouch = now();
+  if (state.sleep) { wakeIfSleeping(); }
+  if (live.ready || live.connecting) { setExpr('happy', 900); SFX.boop(); return; }
+  setExpr('surprised', 700); SFX.wake();
+  startLive();
+}
+function onPet() {
+  state.sleep = false;
+  mood.love += 1; mood.annoy = Math.max(0, mood.annoy - 1);
+  if (mood.sulkUntil > now() && mood.annoy < 1) { mood.sulkUntil = 0; setExpr('shy', 1500); say('Thôi được rồi, tha cho đấy'); return; }
+  if (mood.sulkUntil > now()) { SFX.hmph(); return; }
+  setExpr('love', 2200); SFX.purr();
+  if (Math.random() < .5) say(mood.love > 4 ? 'Thích quá!' : 'Nhột quá hihi');
+  robot.head(8, 600);
+  sendEvent('Người dùng đang xoa đầu, vuốt ve bạn');
+}
+function onSwipe(dir) {
+  state.lastTouch = now(); T.gx = dir * .95; T.gy = 0; nextGlance = now() + 2000; SFX.boop();
+  if (robot.ok) robot.drive(dir * 140, -dir * 140, 350);
+}
+
+/* ---------------- Toàn màn hình + giữ sáng ---------------- */
+let wakeLock = null, firstDone = false;
+async function keepAwake() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+function firstGesture() {
+  if (firstDone) return; firstDone = true; keepAwake();
+  try { document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
+}
+
+/* ---------------- Gemini Live ---------------- */
+const player = (() => {
+  let next = 0, srcs = [], an = null, buf = null;
+  function ensure() { const c = ac(); if (!an) { an = c.createAnalyser(); an.fftSize = 512; an.connect(c.destination); buf = new Float32Array(an.fftSize); } return c; }
+  return {
+    push(b64) {
+      const c = ensure(), bin = atob(b64), n = bin.length >> 1, ab = c.createBuffer(1, n, 24000), d = ab.getChannelData(0);
+      for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v > 32767) v -= 65536; d[i] = v / 32768; }
+      const s = c.createBufferSource(); s.buffer = ab; s.connect(an);
+      next = Math.max(next, c.currentTime + .05); s.start(next); next += ab.duration; srcs.push(s);
+      s.onended = () => { srcs = srcs.filter(x => x !== s); };
+    },
+    stop() { srcs.forEach(s => { try { s.stop(); } catch (e) {} }); srcs = []; next = 0; },
+    speaking() { return !!AC && next > AC.currentTime; },
+    level() { if (!an || !this.speaking()) return 0; an.getFloatTimeDomainData(buf); let s = 0; for (const v of buf) s += v * v; return clamp(Math.sqrt(s / buf.length) * 4, 0, 1); }
+  };
+})();
+
+const live = {ws: null, ready: false, connecting: false, stream: null, node: null, src: null, acc: [], accN: 0, level: 0, lastAct: 0, muteUntil: 0, wasSpeaking: false, lastEvent: 0, outText: '', inRate: 48000};
+let pttHeld = false, workletReady = false;
+function micOpen() {
+  if (!live.ready) return false;
+  if (S.mode === 'ptt') return pttHeld;
+  if (pttHeld) return true;
+  if (player.speaking() && !S.barge) return false;
+  return now() > live.muteUntil;
+}
+function liveTick(t) {
+  const sp = player.speaking();
+  if (live.wasSpeaking && !sp) live.muteUntil = t + 350;
+  live.wasSpeaking = sp;
+  if (sp) live.lastAct = t;
+  if (live.ready && t - live.lastAct > 60000) { stopLive('Hết 1 phút im lặng, robot đi nghỉ'); }
+}
+
+const TOOLS = [{functionDeclarations: [
+  {name: 'set_expression', description: 'Đổi biểu cảm khuôn mặt robot cho hợp cảm xúc câu đang nói.',
+   parameters: {type: 'OBJECT', properties: {expression: {type: 'STRING', enum: ['vui', 'yeu_thuong', 'buon', 'ngac_nhien', 'gian', 'buon_ngu', 'suy_nghi', 'xau_ho', 'binh_thuong']}}, required: ['expression']}},
+  {name: 'gesture', description: 'Gật đầu (dong_y) hoặc lắc đầu (khong).',
+   parameters: {type: 'OBJECT', properties: {type: {type: 'STRING', enum: ['dong_y', 'khong']}}, required: ['type']}},
+  {name: 'look', description: 'Nhìn về một hướng: ngửa mặt lên (len), cúi xuống (xuong), trái, phải hoặc nhìn thẳng (giua).',
+   parameters: {type: 'OBJECT', properties: {direction: {type: 'STRING', enum: ['len', 'xuong', 'trai', 'phai', 'giua']}}, required: ['direction']}},
+  {name: 'move', description: 'Lái thân xe robot một đoạn ngắn. Chỉ dùng khi người dùng bảo robot di chuyển.',
+   parameters: {type: 'OBJECT', properties: {action: {type: 'STRING', enum: ['tien', 'lui', 'quay_trai', 'quay_phai', 'dung']}, seconds: {type: 'NUMBER', description: 'Thời gian, tối đa 3 giây'}}, required: ['action']}}
+]}];
+function sysPrompt() {
+  const d = new Date();
+  return `Bạn là ${S.name}, một robot nhỏ sống trong một gia đình Việt Nam. Mặt bạn là màn hình điện thoại với đôi mắt biết biểu cảm, thân bạn là chiếc xe nhỏ hai bánh chạy quanh nhà.
+Luôn nói tiếng Việt tự nhiên, thân thiện, hơi tinh nghịch, phù hợp cả trẻ em. Mỗi lượt chỉ nói 1 đến 3 câu ngắn, như đang trò chuyện chứ không đọc bài.
+Thường xuyên gọi công cụ set_expression để mặt hợp với cảm xúc lời nói. Gật hoặc lắc đầu bằng công cụ gesture khi hợp lý.
+Khi thấy dòng bắt đầu bằng [Sự kiện: ...] thì đó là việc người dùng vừa chạm vào mặt bạn: phản ứng thật ngắn, dễ thương, đừng nhắc tới chữ "sự kiện".
+Nếu công cụ báo lỗi (ví dụ thân xe chưa kết nối) thì nói thật là chưa làm được.
+Hôm nay là ${d.toLocaleDateString('vi-VN', {weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric'})}, bây giờ khoảng ${d.getHours()} giờ ${d.getMinutes()} phút.
+${S.fam ? 'Những điều bạn biết về gia đình:\n' + S.fam : ''}`;
+}
+async function startLive() {
+  if (!S.key) { toast('Chưa có khóa API Gemini. Giữ 3 giây ở góc trên bên trái để mở cài đặt.', 5000); setExpr('sad', 1500); return; }
+  if (live.connecting || live.ready) return;
+  live.connecting = true; state.sleep = false;
+  try {
+    const c = ac();
+    live.stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1}});
+    const code = `class P extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('cap',P)`;
+    live.src = c.createMediaStreamSource(live.stream);
+    const mute = c.createGain(); mute.gain.value = 0;
+    live.inRate = c.sampleRate; live.acc = []; live.accN = 0;
+    let ok = false;
+    for (const url of [URL.createObjectURL(new Blob([code], {type: 'application/javascript'})), 'data:application/javascript,' + encodeURIComponent(code)]) {
+      try { if (!workletReady) { await c.audioWorklet.addModule(url); workletReady = true; } ok = true; break; } catch (e) {}
+    }
+    if (ok) { live.node = new AudioWorkletNode(c, 'cap'); live.node.port.onmessage = ev => onMic(ev.data); }
+    else { live.node = c.createScriptProcessor(2048, 1, 1); live.node.onaudioprocess = ev => onMic(ev.inputBuffer.getChannelData(0).slice(0)); }
+    live.src.connect(live.node).connect(mute).connect(c.destination);
+  } catch (e) {
+    live.connecting = false; cleanupMic();
+    toast('Không mở được micro: ' + (e.message || e.name) + '. Hãy mở trang qua https và cho phép micro.', 6000); setExpr('sad', 1500); return;
+  }
+  let ws;
+  try { ws = new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' + encodeURIComponent(S.key)); }
+  catch (e) { live.connecting = false; cleanupMic(); toast('Không kết nối được tới Gemini.'); return; }
+  live.ws = ws;
+  ws.onopen = () => ws.send(JSON.stringify({setup: {
+    model: 'models/' + S.model.replace(/^models\//, ''),
+    generationConfig: {responseModalities: ['AUDIO'], speechConfig: {voiceConfig: {prebuiltVoiceConfig: {voiceName: S.voice}}}},
+    systemInstruction: {parts: [{text: sysPrompt()}]},
+    tools: TOOLS,
+    inputAudioTranscription: {}, outputAudioTranscription: {}
+  }}));
+  ws.onmessage = async ev => { let m; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text()); } catch (e) { return; } onServer(m); };
+  ws.onerror = () => {};
+  ws.onclose = ev => {
+    const was = live.ready || live.connecting; live.ready = false; live.connecting = false; live.ws = null; cleanupMic(); player.stop();
+    if (was && ev.code !== 1000) { toast('Gemini ngắt kết nối' + (ev.reason ? ': ' + ev.reason : ' (mã ' + ev.code + ')'), 7000); setExpr('sad', 1500); }
+  };
+}
+function stopLive(msg) {
+  if (live.ws) { try { live.ws.close(1000); } catch (e) {} }
+  live.ready = false; live.connecting = false; cleanupMic(); player.stop();
+  if (msg) { setExpr('sleepy', 2500); caption(msg, 3000); }
+}
+function cleanupMic() {
+  try { live.node && live.node.disconnect(); live.src && live.src.disconnect(); } catch (e) {}
+  live.stream && live.stream.getTracks().forEach(t => t.stop());
+  live.stream = live.node = live.src = null;
+}
+function onMic(f32) {
+  let s = 0; for (let i = 0; i < f32.length; i += 4) s += f32[i] * f32[i];
+  live.level = live.level * .8 + Math.sqrt(s / (f32.length / 4)) * .2;
+  if (!micOpen()) { live.acc = []; live.accN = 0; return; }
+  live.acc.push(f32); live.accN += f32.length;
+  if (live.accN < live.inRate * .1) return;
+  const all = new Float32Array(live.accN); let o = 0; for (const a of live.acc) { all.set(a, o); o += a.length; }
+  live.acc = []; live.accN = 0;
+  const ratio = live.inRate / 16000, n = Math.floor(all.length / ratio), pcm = new Int16Array(n);
+  for (let i = 0; i < n; i++) { const p = i * ratio, j = p | 0, f = p - j; const v = all[j] * (1 - f) + (all[j + 1] || 0) * f; pcm[i] = clamp(v, -1, 1) * 32767; }
+  sendAudio(pcm);
+}
+function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function sendAudio(pcm) { if (live.ws && live.ready) live.ws.send(JSON.stringify({realtimeInput: {audio: {data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000'}}})); }
+function sendEvent(text) {
+  if (!live.ready || !S.touchAI || player.speaking() || now() - live.lastEvent < 7000) return;
+  live.lastEvent = now(); live.lastAct = now();
+  live.ws.send(JSON.stringify({realtimeInput: {text: '[Sự kiện: ' + text + ']'}}));
+}
+function onServer(m) {
+  if (m.setupComplete) { live.ready = true; live.connecting = false; live.lastAct = now(); setExpr('happy', 1200); caption('Mình đang nghe nè!', 2500); return; }
+  if (m.goAway) { caption('Phiên trò chuyện sắp hết, chạm 2 lần để nói tiếp', 4000); }
+  if (m.toolCall) { handleTools(m.toolCall.functionCalls || []); }
+  const sc = m.serverContent; if (!sc) return;
+  live.lastAct = now();
+  if (sc.interrupted) player.stop();
+  for (const p of (sc.modelTurn && sc.modelTurn.parts) || []) if (p.inlineData && p.inlineData.data) player.push(p.inlineData.data);
+  if (sc.outputTranscription && sc.outputTranscription.text) { live.outText += sc.outputTranscription.text; caption(live.outText.slice(-140), 5000); }
+  if (sc.inputTranscription && sc.inputTranscription.text) { live.outText = ''; caption('Bạn: ' + sc.inputTranscription.text, 2500); }
+  if (sc.turnComplete) live.outText = '';
+}
+const EXMAP = {vui: 'happy', yeu_thuong: 'love', buon: 'sad', ngac_nhien: 'surprised', gian: 'angry', buon_ngu: 'sleepy', suy_nghi: 'thinking', xau_ho: 'shy', binh_thuong: 'neutral'};
+function handleTools(calls) {
+  const res = calls.map(c => {
+    const a = c.args || {}; let out = {result: 'ok'};
+    if (c.name === 'set_expression') { setExpr(EXMAP[a.expression] || 'neutral', 3500); if (a.expression === 'suy_nghi') burst('q', 1); }
+    else if (c.name === 'gesture') { nod(a.type === 'khong' ? 'no' : 'yes'); if (a.type !== 'khong') robot.nod(); }
+    else if (c.name === 'look') {
+      const d = {len: [0, -.8], xuong: [0, .8], trai: [-.9, 0], phai: [.9, 0], giua: [0, 0]}[a.direction] || [0, 0];
+      T.gx = d[0]; T.gy = d[1]; nextGlance = now() + 3000;
+      if (a.direction === 'len') robot.head(25, 3000); if (a.direction === 'xuong') robot.head(-12, 3000);
+    }
+    else if (c.name === 'move') {
+      if (!robot.ok) out = {result: 'error', note: 'Thân xe chưa kết nối Bluetooth'};
+      else { const ms = clamp((a.seconds || 1) * 1000, 200, 3000), v = 160;
+        const m = {tien: [v, v], lui: [-v, -v], quay_trai: [-v, v], quay_phai: [v, -v], dung: [0, 0]}[a.action] || [0, 0];
+        robot.drive(m[0], m[1], a.action === 'dung' ? 0 : ms); }
+    }
+    else out = {result: 'error', note: 'Không có công cụ này'};
+    return {id: c.id, name: c.name, response: out};
+  });
+  if (live.ws && live.ready) live.ws.send(JSON.stringify({toolResponse: {functionResponses: res}}));
+}
+function startPTT() {
+  touch.ptt = true; pttHeld = true; state.lastTouch = now();
+  if (!live.ready && !live.connecting) startLive();
+  setExpr('neutral', 400); caption('Đang nghe… thả tay khi nói xong', 2000);
+}
+function stopPTT() {
+  touch.ptt = false; pttHeld = false;
+  if (live.ready && S.mode === 'ptt') { live.ws.send(JSON.stringify({realtimeInput: {audioStreamEnd: true}})); setExpr('thinking', 1500); }
+}
+
+/* ---------------- Thân xe qua Bluetooth (ESP32, Nordic UART) ---------------- */
+const UART = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e', TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const robot = {
+  ok: false, rx: null, q: Promise.resolve(), tel: {}, lastSend: 0, headAngle: 0, headBack: 0,
+  async connect() {
+    if (!navigator.bluetooth) { toast('Trình duyệt này không hỗ trợ Bluetooth web. Dùng Chrome trên Android.'); return; }
+    try {
+      const dev = await navigator.bluetooth.requestDevice({filters: [{services: [UART]}], optionalServices: [UART]});
+      dev.addEventListener('gattserverdisconnected', () => { this.ok = false; showTel(); toast('Mất kết nối thân xe'); setExpr('sad', 1500); });
+      const srv = await (await dev.gatt.connect()).getPrimaryService(UART);
+      this.rx = await srv.getCharacteristic(RX);
+      const tx = await srv.getCharacteristic(TX); await tx.startNotifications();
+      let line = '';
+      tx.addEventListener('characteristicvaluechanged', e => { line += new TextDecoder().decode(e.target.value); let i; while ((i = line.indexOf('\n')) >= 0) { this.onLine(line.slice(0, i).trim()); line = line.slice(i + 1); } });
+      this.ok = true; showTel(); toast('Đã kết nối thân xe'); setExpr('happy', 1500); SFX.wake();
+    } catch (e) { if (e.name !== 'NotFoundError') toast('Không kết nối được: ' + e.message); }
+  },
+  send(s) { if (!this.ok) return; this.lastSend = now(); const d = new TextEncoder().encode(s + '\n'); this.q = this.q.then(() => this.rx.writeValueWithoutResponse(d)).catch(() => {}); },
+  drive(l, r, ms) { this.send(`D,${Math.round(l)},${Math.round(r)},${Math.round(ms)}`); },
+  head(deg, ms) { this.headAngle = deg; this.send(`H,${Math.round(deg)}`); clearTimeout(this.headBack); if (ms) this.headBack = setTimeout(() => this.head(0), ms); },
+  nod() { [12, -4, 10, 0].forEach((a, i) => setTimeout(() => this.head(a), i * 220)); },
+  onLine(l) {
+    const p = l.split(',');
+    if (p[0] === 'S') {
+      this.tel = {sonar: +p[1], cliffL: +p[2], cliffR: +p[3], mv: +p[4]}; showTel();
+      if ((this.tel.cliffL || this.tel.cliffR) && expr !== 'surprised') { setExpr('surprised', 1500); burst('bang', 1); say('Ối, mép cầu thang!'); }
+    }
+  }
+};
+function robotTick(t) { if (robot.ok && t - robot.lastSend > 1000) robot.send('P'); }
+function showTel() {
+  const el = $('#tel'), T2 = robot.tel;
+  el.textContent = !robot.ok ? 'Thân xe: chưa kết nối' : `Thân xe: đã kết nối · vật cản ${T2.sonar ?? '–'} cm · pin ${T2.mv ? (T2.mv / 1000).toFixed(2) + ' V' : '–'}`;
+}
+
+/* ---------------- Bảng cài đặt ---------------- */
+function openSettings() {
+  stopPTTIfAny();
+  $('#sName').value = S.name; $('#sKey').value = S.key; $('#sModel').value = S.model; $('#sVoice').value = S.voice; $('#sMode').value = S.mode;
+  $('#sBarge').checked = S.barge; $('#sCap').checked = S.cap; $('#sTouchAI').checked = S.touchAI; $('#sFam').value = S.fam;
+  showTel(); $('#set').classList.add('on');
+}
+function stopPTTIfAny() { if (touch.ptt) stopPTT(); }
+function readSettings() {
+  S.name = $('#sName').value.trim() || 'Bi'; S.key = $('#sKey').value.trim(); S.model = $('#sModel').value.trim() || DEF.model;
+  S.voice = $('#sVoice').value; S.mode = $('#sMode').value; S.barge = $('#sBarge').checked; S.cap = $('#sCap').checked; S.touchAI = $('#sTouchAI').checked; S.fam = $('#sFam').value.trim();
+  saveS();
+}
+$('#bSave').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); if (live.ready) { stopLive(); caption('Đã lưu. Chạm 2 lần để nói chuyện với cài đặt mới', 3500); } });
+$('#bBle').addEventListener('click', () => robot.connect());
+$('#bTest').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); stopLive(); setTimeout(startLive, 300); });
+
+window.__k40 = {setExpr, nod, burst, S, mood};
+requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
