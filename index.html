@@ -394,7 +394,7 @@ function onTap(x, y) {
 function onDoubleTap() {
   state.lastTouch = now(); live.greetOnly = false;
   if (state.sleep) { wakeIfSleeping(); }
-  if (live.ready || live.connecting) { setExpr('happy', 900); SFX.boop(); return; }
+  if (live.ready || live.connecting) { stopLive(); setExpr('happy', 1200); caption('Tạm biệt, cần gì cứ gọi Bi nhé!', 2500); say('Tạm biệt!'); return; }
   setExpr('surprised', 700); SFX.wake();
   startLive();
 }
@@ -463,7 +463,6 @@ function liveTick(t) {
   if (live.wasSpeaking && !sp) live.muteUntil = t + 350;
   live.wasSpeaking = sp;
   if (sp) live.lastAct = t;
-  if (live.ready && vision.present && !live.greetOnly) live.lastAct = Math.max(live.lastAct, t - 30000);
   if (live.ready && t - live.lastAct > (live.greetOnly ? 20000 : 60000)) { stopLive(live.greetOnly ? '' : 'Hết 1 phút im lặng, robot đi nghỉ'); }
   if (live.ready && S.camAI && vision.on && t - vision.lastFrame > 3000) { vision.lastFrame = t; const f = vision.jpeg(); if (f) live.ws.send(JSON.stringify({realtimeInput: {video: {data: f, mimeType: 'image/jpeg'}}})); }
 }
