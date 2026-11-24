@@ -19,8 +19,8 @@
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
   font:16px/1.5 "Be Vietnam Pro",system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
-#cap{position:fixed;left:50%;bottom:4vh;transform:translateX(-50%);max-width:86vw;text-align:center;
-  font-size:clamp(14px,2.6vw,22px);color:var(--ink);opacity:0;transition:opacity .4s;pointer-events:none;text-wrap:balance}
+#cap{position:fixed;left:50%;bottom:2.2vh;transform:translateX(-50%);max-width:80vw;text-align:center;
+  font-size:clamp(12px,2vw,17px);color:var(--ink);opacity:0;transition:opacity .4s;pointer-events:none;text-wrap:balance}
 #cap.on{opacity:.85}
 #toast{position:fixed;left:50%;top:5vh;transform:translateX(-50%);background:#132331;border:1px solid var(--line);
   padding:10px 16px;border-radius:12px;max-width:88vw;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none}
@@ -67,6 +67,7 @@ h3{font-size:18px;font-weight:600;margin:26px 0 6px}
   <div class="row"><label for="sMode">Cách nói chuyện</label>
    <select id="sMode"><option value="free">Rảnh tay: cứ nói, robot tự nghe</option><option value="ptt">Giữ màn hình để nói, thả ra robot trả lời</option></select></div>
   <label class="chk"><input type="checkbox" id="sBarge"> Cho phép ngắt lời khi robot đang nói (dễ bị robot tự nghe chính nó)</label>
+  <label class="chk"><input type="checkbox" id="sMouth"> Hiện miệng</label>
   <label class="chk"><input type="checkbox" id="sCap"> Hiện phụ đề</label>
   <label class="chk"><input type="checkbox" id="sTouchAI"> Robot nói khi bị chạm (lúc đang trò chuyện)</label>
   <div class="row"><label for="sFam">Robot nên biết gì về gia đình (tên mọi người, sở thích, ngày đặc biệt…)</label><textarea id="sFam" placeholder="Ví dụ: Bố tên Hùng, thích bóng đá. Mẹ tên Lan. Bé Na 6 tuổi, thích khủng long."></textarea></div>
@@ -97,7 +98,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- Cài đặt ---------------- */
-const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, act: 'always', camAI: true, follow: true};
+const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, act: 'always', camAI: true, follow: true, mouth: true};
 let S = {...DEF};
 try { S = {...DEF, ...JSON.parse(localStorage.getItem('k40robot') || '{}')}; } catch (e) {}
 const saveS = () => { try { localStorage.setItem('k40robot', JSON.stringify(S)); } catch (e) {} };
@@ -142,19 +143,19 @@ function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H 
 addEventListener('resize', resize); resize();
 
 const EXPR = {
-  neutral:  {open: 1,   tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0},
-  happy:    {open: 1,   tin: 0,    tout: 0,   happy: .5,  scale: 1.02, dy: -.04},
-  love:     {open: 1,   tin: 0,    tout: 0,   happy: .78, scale: 1.04, dy: -.05},
-  sad:      {open: .8,  tin: -.05, tout: .32, happy: 0,   scale: .95,  dy: .07},
-  surprised:{open: 1.12,tin: 0,    tout: 0,   happy: 0,   scale: 1.16, dy: -.03},
-  angry:    {open: .78, tin: .36,  tout: 0,   happy: 0,   scale: .97,  dy: .02},
-  sleepy:   {open: .34, tin: 0,    tout: .1,  happy: 0,   scale: 1,    dy: .06},
-  sleep:    {open: .04, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: .1},
-  thinking: {open: .85, tin: .06,  tout: 0,   happy: 0,   scale: .98,  dy: 0},
-  wince:    {open: .12, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0},
-  shy:      {open: .9,  tin: 0,    tout: .08, happy: .35, scale: .94,  dy: .05}
+  neutral:  {open: 1,   tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0,    brow: 0,   btilt: 0,   curve: .3,  mo: 0,   mw: 1,   blush: 0},
+  happy:    {open: 1,   tin: 0,    tout: 0,   happy: .5,  scale: 1.02, dy: -.04, brow: .25, btilt: 0,   curve: .9,  mo: .28, mw: 1.15,blush: .55},
+  love:     {open: 1,   tin: 0,    tout: 0,   happy: .78, scale: 1.04, dy: -.05, brow: .3,  btilt: .1,  curve: 1,   mo: 0,   mw: 1.1, blush: 1},
+  sad:      {open: .8,  tin: -.05, tout: .32, happy: 0,   scale: .95,  dy: .07,  brow: -.1, btilt: .7,  curve: -.75,mo: 0,   mw: .85, blush: 0},
+  surprised:{open: 1.12,tin: 0,    tout: 0,   happy: 0,   scale: 1.16, dy: -.03, brow: 1,   btilt: 0,   curve: 0,   mo: 1,   mw: .5,  blush: 0},
+  angry:    {open: .78, tin: .36,  tout: 0,   happy: 0,   scale: .97,  dy: .02,  brow: -.45,btilt: -.9, curve: -.35,mo: 0,   mw: .75, blush: 0},
+  sleepy:   {open: .34, tin: 0,    tout: .1,  happy: 0,   scale: 1,    dy: .06,  brow: -.3, btilt: .15, curve: 0,   mo: 0,   mw: .55, blush: 0},
+  sleep:    {open: .04, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: .1,   brow: -.4, btilt: 0,   curve: .1,  mo: 0,   mw: .45, blush: 0},
+  thinking: {open: .85, tin: .06,  tout: 0,   happy: 0,   scale: .98,  dy: 0,    brow: .15, btilt: 0,   curve: -.15,mo: 0,   mw: .55, blush: 0},
+  wince:    {open: .12, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0,    brow: -.6, btilt: -.5, curve: 0,   mo: 0,   mw: .9,  blush: 0},
+  shy:      {open: .9,  tin: 0,    tout: .08, happy: .35, scale: .94,  dy: .05,  brow: .1,  btilt: .35, curve: .55, mo: 0,   mw: .6,  blush: 1}
 };
-const F = {open: 1, tin: 0, tout: 0, happy: 0, scale: 1, dy: 0, gx: 0, gy: 0, wince: 0, bounce: 0};
+const F = {open: 1, tin: 0, tout: 0, happy: 0, scale: 1, dy: 0, brow: 0, btilt: 0, curve: .3, mo: 0, mw: 1, blush: 0, gx: 0, gy: 0, wince: 0, bounce: 0, listen: 0};
 const T = {gx: 0, gy: 0};
 let expr = 'neutral', exprUntil = 0, blinkAt = now() + 2000, blinkT = -1;
 let particles = [];
@@ -176,13 +177,16 @@ function roundRect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); cx.beginPath(
 function heart(x, y, s) { cx.beginPath(); cx.moveTo(x, y + s * .3); cx.bezierCurveTo(x, y, x - s * .5, y, x - s * .5, y + s * .3); cx.bezierCurveTo(x - s * .5, y + s * .6, x, y + s * .8, x, y + s); cx.bezierCurveTo(x, y + s * .8, x + s * .5, y + s * .6, x + s * .5, y + s * .3); cx.bezierCurveTo(x + s * .5, y, x, y, x, y + s * .3); cx.fill(); }
 
 function eyeGeom() {
-  const ew = H > W * 1.2 ? Math.min(W * .3, H * .2) : Math.min(W * .19, H * .36), eh = ew * 1.18, gap = ew * .62;
-  return {ew, eh, cy: H * .47, lx: W / 2 - gap / 2 - ew / 2, rx: W / 2 + gap / 2 + ew / 2};
+  const portrait = H > W * 1.2, m = S.mouth;
+  let ew, eh, cy, sep;
+  if (portrait) { ew = Math.min(W * .28, H * .19); eh = ew * 1.12; sep = ew * .85; cy = H * (m ? .42 : .47); }
+  else { ew = Math.min(W * .165, H * (m ? .29 : .33)); eh = ew * 1.1; sep = Math.max(ew * .9, W * .2); cy = H * (m ? .4 : .46); }
+  return {ew, eh, cy, lx: W / 2 - sep, rx: W / 2 + sep, my: cy + eh * .5 + Math.min(H * .13, eh * .62)};
 }
 function drawEye(cxp, cyp, side, g, blink) {
-  const s = F.scale * (1 + F.bounce * .06), w = g.ew * s;
+  const bf = S.mouth ? .3 : 1, s = F.scale * (1 + F.bounce * .06 * bf), w = g.ew * s;
   let open = F.open * blink * (expr === 'thinking' && side < 0 ? .72 : 1);
-  const h = Math.max(4, g.eh * s * open * (1 + F.bounce * .1));
+  const h = Math.max(4, g.eh * s * open * (1 + F.bounce * .1 * bf));
   const x = cxp + F.gx * g.ew * .42 - w / 2, y = cyp + F.gy * g.eh * .3 + F.dy * g.eh - h / 2;
   if (F.wince > .5) {
     cx.strokeStyle = getEye(); cx.lineWidth = g.ew * .13; cx.lineCap = 'round'; cx.lineJoin = 'round';
@@ -203,6 +207,40 @@ function drawEye(cxp, cyp, side, g, blink) {
 let eyeColor = '#5ef2ff';
 function getEye() { return eyeColor; }
 
+function drawBrow(ex, side, g) {
+  const s = F.scale, w = g.ew * s, top = g.cy + F.gy * g.eh * .3 + F.dy * g.eh - g.eh * s * Math.max(F.open, .5) / 2;
+  const x = ex + F.gx * g.ew * .42, extra = expr === 'thinking' && side < 0 ? .45 : 0;
+  const base = top - g.eh * (.2 + (F.brow + extra) * .14);
+  const xin = x - side * w * .42, xout = x + side * w * .42;
+  const yin = base - F.btilt * g.eh * .1, yout = base + F.btilt * g.eh * .05;
+  cx.strokeStyle = getEye(); cx.lineWidth = g.ew * .085; cx.lineCap = 'round'; cx.globalAlpha = .9;
+  cx.beginPath(); cx.moveTo(xout, yout); cx.quadraticCurveTo(x, (yin + yout) / 2 - g.eh * .06 * (1 - Math.min(1, Math.abs(F.btilt))), xin, yin); cx.stroke(); cx.globalAlpha = 1;
+}
+function drawBlush(ex, side, g) {
+  if (F.blush < .03) return;
+  cx.globalAlpha = .45 * F.blush; cx.fillStyle = '#ff7aa8';
+  cx.beginPath(); cx.ellipse(ex + F.gx * g.ew * .42 + side * g.ew * .82, g.cy + g.eh * .56 + F.dy * g.eh, g.ew * .3, g.ew * .13, 0, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+}
+function drawMouth(g, t) {
+  const mx = W / 2 + F.gx * g.ew * .22, my = g.my + F.gy * g.eh * .12 + F.dy * g.eh * .5;
+  const w = g.ew * .7 * F.mw, lw = g.ew * .075;
+  if (live.connecting) { for (let i = 0; i < 3; i++) { cx.globalAlpha = .35 + .65 * (Math.sin(t / 200 - i) + 1) / 2; cx.fillStyle = '#ffb347'; cx.beginPath(); cx.arc(mx + (i - 1) * lw * 2.6, my, lw * .7, 0, Math.PI * 2); cx.fill(); } cx.globalAlpha = 1; return; }
+  const col = F.listen > .5 ? '#5ef2a0' : getEye();
+  cx.strokeStyle = col; cx.fillStyle = col; cx.lineWidth = lw; cx.lineCap = 'round'; cx.lineJoin = 'round';
+  if (F.wince > .5) {
+    cx.beginPath(); const n = 5; for (let i = 0; i <= n; i++) { const x = mx - w / 2 + w * i / n, y = my + (i % 2 ? -1 : 1) * lw * .7; i ? cx.lineTo(x, y) : cx.moveTo(x, y); } cx.stroke(); return;
+  }
+  const talk = player.speaking() ? clamp(F.bounce * 1.6, 0, 1) : 0;
+  const breathe = F.listen * (.12 + clamp(live.level * 8, 0, .5));
+  const open = Math.max(F.mo, talk, breathe);
+  const c = F.curve * g.ew * .22, oh = open * g.ew * .34;
+  if (open < .08) { cx.beginPath(); cx.moveTo(mx - w / 2, my); cx.quadraticCurveTo(mx, my + c * 2, mx + w / 2, my); cx.stroke(); return; }
+  if (open > .55 && Math.abs(F.curve) < .3) { cx.beginPath(); cx.ellipse(mx, my + oh * .3, w / 2, oh * .75, 0, 0, Math.PI * 2); cx.fill(); return; }
+  cx.beginPath(); cx.moveTo(mx - w / 2, my);
+  cx.quadraticCurveTo(mx, my + c * 2 - oh * .3, mx + w / 2, my);
+  cx.quadraticCurveTo(mx, my + c * 2 + oh * 1.7, mx - w / 2, my);
+  cx.closePath(); cx.fill(); cx.stroke();
+}
 function drawParticles(g, dt) {
   particles = particles.filter(p => (p.t += dt) < p.life + p.d);
   for (const p of particles) {
@@ -217,6 +255,7 @@ function drawParticles(g, dt) {
   cx.globalAlpha = 1;
 }
 function drawStatus(g) {
+  if (S.mouth) return;
   const r = Math.max(4, g.ew * .035), y = g.cy + g.eh * .78;
   let col = null, n = 0;
   if (live.connecting) { col = '#ffb347'; n = 3; }
@@ -236,7 +275,8 @@ function frame() {
   const t = now(), dt = Math.min(.05, (t - last) / 1000); last = t;
   if (t > exprUntil) expr = baseExpr();
   const E = EXPR[expr], k = 1 - Math.exp(-dt * 11);
-  for (const key of ['open', 'tin', 'tout', 'happy', 'scale', 'dy']) F[key] += (E[key] - F[key]) * k;
+  for (const key of ['open', 'tin', 'tout', 'happy', 'scale', 'dy', 'brow', 'btilt', 'curve', 'mo', 'mw', 'blush']) F[key] += (E[key] - F[key]) * k;
+  F.listen += ((live.ready && micOpen() && !player.speaking() ? 1 : 0) - F.listen) * k;
   F.wince += ((expr === 'wince' ? 1 : 0) - F.wince) * k * 1.5;
   idleGaze(t);
   let ngx = T.gx, ngy = T.gy;
@@ -250,6 +290,9 @@ function frame() {
   cx.fillStyle = '#04060a'; cx.fillRect(0, 0, W, H);
   const g = eyeGeom();
   drawEye(g.lx, g.cy, -1, g, blink); drawEye(g.rx, g.cy, 1, g, blink);
+  drawBlush(g.lx, -1, g); drawBlush(g.rx, 1, g);
+  if (F.wince < .5 && expr !== 'sleep') { drawBrow(g.lx, -1, g); drawBrow(g.rx, 1, g); }
+  if (S.mouth) drawMouth(g, t);
   drawParticles(g, dt); drawStatus(g); drawHold(t);
   robotTick(t);
   liveTick(t);
@@ -755,7 +798,7 @@ function openSettings() {
   stopPTTIfAny();
   $('#sName').value = S.name; $('#sKey').value = S.key; $('#sModel').value = S.model; $('#sVoice').value = S.voice; $('#sMode').value = S.mode;
   $('#sBarge').checked = S.barge; $('#sCap').checked = S.cap; $('#sTouchAI').checked = S.touchAI; $('#sFam').value = S.fam;
-  $('#sCam').checked = S.cam; $('#sAct').value = S.act; $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; renderPeople();
+  $('#sCam').checked = S.cam; $('#sAct').value = S.act; $('#sMouth').checked = S.mouth; $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; renderPeople();
   if (S.cam && !vision.on) vision.start();
   showTel(); $('#set').classList.add('on');
 }
@@ -763,7 +806,7 @@ function stopPTTIfAny() { if (touch.ptt) stopPTT(); }
 function readSettings() {
   S.name = $('#sName').value.trim() || 'Bi'; S.key = $('#sKey').value.trim(); S.model = $('#sModel').value.trim() || DEF.model;
   S.voice = $('#sVoice').value; S.mode = $('#sMode').value; S.barge = $('#sBarge').checked; S.cap = $('#sCap').checked; S.touchAI = $('#sTouchAI').checked; S.fam = $('#sFam').value.trim();
-  S.cam = $('#sCam').checked; S.act = $('#sAct').value; S.camAI = $('#sCamAI').checked; S.follow = $('#sFollow').checked;
+  S.cam = $('#sCam').checked; S.act = $('#sAct').value; S.mouth = $('#sMouth').checked; S.camAI = $('#sCamAI').checked; S.follow = $('#sFollow').checked;
   syncCam();
   saveS();
 }
