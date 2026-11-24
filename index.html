@@ -420,10 +420,13 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { keepAwake(); syncCam(); }
   else if (vision.on) vision.stopStream();
 });
+let fullTried = false;
 function goFull() {
+  if (fullTried) return;
   if (document.fullscreenElement || document.webkitFullscreenElement || matchMedia('(display-mode: fullscreen)').matches) return;
   const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
   if (!req) return;
+  fullTried = true;
   try { const p = req.call(el, {navigationUI: 'hide'}); if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {}); } catch (e) {}
 }
 function firstGesture() {
