@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#04060a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -139,7 +142,7 @@ function say(t) { if (live.ready || !viVoice) return; try { const u = new Speech
 /* ---------------- Mặt ---------------- */
 const cv = $('#cv'), cx = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1;
-function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+function resize() { DPR = Math.min(devicePixelRatio || 1, 1.25); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0); }
 addEventListener('resize', resize); resize();
 
 const EXPR = {
@@ -272,7 +275,11 @@ function drawStatus(g) {
 
 let last = now();
 function frame() {
-  const t = now(), dt = Math.min(.05, (t - last) / 1000); last = t;
+  const t = now();
+  const busy = player.speaking() || touch.down || nodAnim || particles.length || live.connecting || blinkT >= 0 || (live.ready && micOpen()) || Math.abs(F.gx - T.gx) + Math.abs(F.gy - T.gy) > .02;
+  const gap = state.sleep ? 125 : busy ? 33 : 66;
+  if (t - last < gap - 4) { requestAnimationFrame(frame); return; }
+  const dt = Math.min(.15, (t - last) / 1000); last = t;
   if (t > exprUntil) expr = baseExpr();
   const E = EXPR[expr], k = 1 - Math.exp(-dt * 11);
   for (const key of ['open', 'tin', 'tout', 'happy', 'scale', 'dy', 'brow', 'btilt', 'curve', 'mo', 'mw', 'blush']) F[key] += (E[key] - F[key]) * k;
@@ -351,6 +358,7 @@ cv.addEventListener('pointermove', e => {
   }
 });
 function endPointer(e) {
+  if (e.type === 'pointerup') goFull();
   if (!touch.down) return; touch.down = false; clearTimeout(touch.pressT); clearTimeout(touch.corner); holdDraw = null;
   const dur = now() - touch.t0, dx = e.clientX - touch.x0, dy = e.clientY - touch.y0;
   setTimeout(() => touch.follow = false, 900);
@@ -412,10 +420,15 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { keepAwake(); syncCam(); }
   else if (vision.on) vision.stopStream();
 });
+function goFull() {
+  if (document.fullscreenElement || document.webkitFullscreenElement || matchMedia('(display-mode: fullscreen)').matches) return;
+  const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;
+  try { const p = req.call(el, {navigationUI: 'hide'}); if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {}); } catch (e) {}
+}
 function firstGesture() {
   if (firstDone) return; firstDone = true; keepAwake();
   syncCam();
-  try { document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
 }
 
 /* ---------------- Gemini Live ---------------- */
@@ -452,7 +465,7 @@ function liveTick(t) {
   if (sp) live.lastAct = t;
   if (live.ready && vision.present && !live.greetOnly) live.lastAct = Math.max(live.lastAct, t - 30000);
   if (live.ready && t - live.lastAct > (live.greetOnly ? 20000 : 60000)) { stopLive(live.greetOnly ? '' : 'Hết 1 phút im lặng, robot đi nghỉ'); }
-  if (live.ready && S.camAI && vision.on && t - vision.lastFrame > 2000) { vision.lastFrame = t; const f = vision.jpeg(); if (f) live.ws.send(JSON.stringify({realtimeInput: {video: {data: f, mimeType: 'image/jpeg'}}})); }
+  if (live.ready && S.camAI && vision.on && t - vision.lastFrame > 3000) { vision.lastFrame = t; const f = vision.jpeg(); if (f) live.ws.send(JSON.stringify({realtimeInput: {video: {data: f, mimeType: 'image/jpeg'}}})); }
 }
 
 const TOOLS = [{functionDeclarations: [
@@ -605,10 +618,37 @@ let people = {};
 try { people = JSON.parse(localStorage.getItem('k40people') || '{}'); } catch (e) {}
 const savePeople = () => { try { localStorage.setItem('k40people', JSON.stringify(people)); } catch (e) { toast('Không lưu được dữ liệu khuôn mặt'); } };
 const FA = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/';
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/';
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
 const vision = {
   on: false, stream: null, video: null, loadP: null, recP: null, busy: false, faces: [], main: null, count: 0,
   present: false, recNeed: 0, lastCount: 0, lastSeen: 0, absentSince: -1e9, names: new Set(), lastNames: '', lastRec: 0, lastGreet: {}, lastFrame: 0, lastTurn: 0, lastHead: 0,
   can: document.createElement('canvas'),
+  async loadMP() {
+    const mod = await import(MP + 'vision_bundle.mjs');
+    const files = await mod.FilesetResolver.forVisionTasks(MP + 'wasm');
+    for (const delegate of ['GPU', 'CPU']) {
+      try { this.mp = await mod.FaceDetector.createFromOptions(files, {baseOptions: {modelAssetPath: MP_MODEL, delegate}, runningMode: 'VIDEO', minDetectionConfidence: .5}); this.engine = 'MediaPipe ' + delegate; return; } catch (e) {}
+    }
+    throw new Error('MediaPipe không chạy được');
+  },
+  detectMP(v) {
+    const t = Math.max(now(), (this.mpT || 0) + 1); this.mpT = t;
+    return this.mp.detectForVideo(v, t).detections.map(d => ({box: {x: d.boundingBox.originX, y: d.boundingBox.originY, width: d.boundingBox.width, height: d.boundingBox.height}, desc: null}));
+  },
+  moved() {
+    const v = this.video, c = this.tiny || (this.tiny = document.createElement('canvas')); c.width = 32; c.height = 24;
+    const g = this.tinyCtx || (this.tinyCtx = c.getContext('2d', {willReadFrequently: true}));
+    g.drawImage(v, 0, 0, 32, 24); const d = g.getImageData(0, 0, 32, 24).data, cur = new Uint8Array(768);
+    let diff = 0; for (let i = 0, j = 0; i < d.length; i += 4, j++) { cur[j] = (d[i] * 3 + d[i + 1] * 6 + d[i + 2]) / 10; if (this.prevTiny) diff += Math.abs(cur[j] - this.prevTiny[j]); }
+    const first = !this.prevTiny; this.prevTiny = cur;
+    return first || diff / 768 > 5;
+  },
+  setRes(hi) {
+    if (this.hi === hi || !this.stream) return; this.hi = hi;
+    const tr = this.stream.getVideoTracks()[0]; if (!tr || !tr.applyConstraints) return;
+    tr.applyConstraints(hi ? {width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 15, max: 20}} : {width: {ideal: 320}, height: {ideal: 240}, frameRate: {ideal: 10, max: 15}}).catch(() => {});
+  },
   load() {
     if (!this.loadP) this.loadP = new Promise((ok, bad) => { if (window.faceapi) return ok(); const sc = document.createElement('script'); sc.src = FA + 'dist/face-api.js'; sc.onload = ok; sc.onerror = () => bad(new Error('Không tải được bộ nhận diện mặt')); document.head.appendChild(sc); })
       .then(async () => { await faceapi.tf.ready(); await faceapi.nets.tinyFaceDetector.loadFromUri(FA + 'model'); })
@@ -627,7 +667,10 @@ const vision = {
       this.video.srcObject = this.stream; await this.video.play().catch(() => {});
       $('#pv').srcObject = this.stream; $('#pv').play().catch(() => {});
       vStat('Camera: đang tải bộ nhận diện mặt…');
-      await this.load(); this.on = true; vStat('Camera: đang bật');
+      this.mp = null; this.engine = 'face-api';
+      try { await Promise.race([this.loadMP(), new Promise((_, bad) => setTimeout(() => bad(new Error('hết giờ')), 20000))]); }
+      catch (e) { this.mp = null; this.engine = 'face-api'; await this.load(); }
+      this.hi = true; this.lastDet = 0; this.prevTiny = null; this.on = true; vStat('Camera: đang bật (' + this.engine + ')');
       if (Object.keys(people).length) this.loadRec().catch(() => {});
       this.loop();
     } catch (e) { this.stopStream(); vStat('Camera: lỗi – ' + (e.message || e.name)); toast('Không mở được camera: ' + (e.message || e.name), 5000); }
@@ -639,18 +682,22 @@ const vision = {
     while (this.on) {
       const t0 = now();
       try { await this.tick(); } catch (e) {}
-      const gap = state.sleep ? 2000 : this.present ? 250 : 650;
+      const gap = this.present ? 250 : state.sleep ? 1000 : 500;
       await new Promise(r => setTimeout(r, Math.max(40, gap - (now() - t0))));
     }
   },
   async tick() {
     const v = this.video; if (!v || v.readyState < 2 || !v.videoWidth) return;
     const t = now(), vw = v.videoWidth, vh = v.videoHeight;
-    const wantRec = this.recReady() && this.recNeed > 0 && t - this.lastRec > 900 && !state.sleep;
-    let dets;
-    if (wantRec) { this.lastRec = t; dets = await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors(); }
-    else dets = await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: this.present ? 224 : 160, scoreThreshold: .5}));
-    const boxes = dets.map(d => ({box: (d.detection || d).box, desc: d.descriptor || null}));
+    const wantRec = this.recReady() && this.recNeed > 0 && t - this.lastRec > 900;
+    const needHi = this.present || this.enrolling || (live.ready && S.camAI);
+    if (needHi) this.lastHiNeed = t; this.setRes(t - (this.lastHiNeed || 0) < 10000);
+    if (!this.present && !wantRec && !this.enrolling && !this.moved() && t - this.lastDet < 5000) { vStat(`Camera: đang bật (${this.engine}) · không có ai`); return; }
+    this.lastDet = t;
+    let boxes;
+    if (wantRec) { this.lastRec = t; const dets = await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors(); boxes = dets.map(d => ({box: d.detection.box, desc: d.descriptor})); }
+    else if (this.mp) boxes = this.detectMP(v);
+    else boxes = (await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: this.present || state.sleep ? 224 : 160, scoreThreshold: .5}))).map(d => ({box: d.box, desc: null}));
     this.count = boxes.length;
     if (this.count > this.lastCount) this.recNeed = 3;
     this.lastCount = this.count;
@@ -663,17 +710,17 @@ const vision = {
       const cxn = (b.x + b.width / 2) / vw, cyn = (b.y + b.height / 2) / vh;
       this.main = {gx: clamp((.5 - cxn) * 2.4, -1, 1), gy: clamp((cyn - .42) * 2.2, -1, 1), size: b.width / vw};
       this.lastSeen = t;
-      if (!this.present && t - this.absentSince > 4000) { this.present = true; setTimeout(() => this.arrive(), this.recReady() ? 1300 : 200); }
+      if (!this.present && t - this.absentSince > 4000) { this.present = true; if (S.act === 'always' && state.sleep) { wakeIfSleeping(); } state.lastTouch = t; setTimeout(() => this.arrive(), this.recReady() ? 1300 : 200); }
       this.present = true;
       this.follow(t);
     } else if (this.present && t - this.lastSeen > 3000) { this.present = false; this.absentSince = t; this.names.clear(); this.lastNames = ''; this.lastCount = 0; this.recNeed = 0; }
     const ns = [...this.names].sort().join(', ');
     if (ns !== this.lastNames) { this.lastNames = ns; if (ns && live.ready) sendEvent('Bạn đang nhìn thấy ' + ns, true); }
-    vStat(`Camera: đang bật · thấy ${this.count} người${ns ? ' · nhận ra: ' + ns : ''}`);
+    vStat(`Camera: đang bật (${this.engine}) · thấy ${this.count} người${ns ? ' · nhận ra: ' + ns : ''}`);
   },
   recReady() { return !!this.recP && faceapi.nets.faceRecognitionNet.isLoaded && Object.keys(people).length > 0; },
   arrive(tries = 0) {
-    if (!this.present) return;
+    if (!this.present && now() - this.lastSeen > 3000) return;
     if (Object.keys(people).length && (!this.recReady() || this.recNeed > 0) && tries < 14) { setTimeout(() => this.arrive(tries + 1), 700); return; }
     if (S.act !== 'always' && !live.ready) return;
     state.lastTouch = now(); if (state.sleep) wakeIfSleeping();
@@ -709,13 +756,15 @@ const vision = {
     if (!this.on) await this.start();
     if (!this.on) return {result: 'error', note: 'Không mở được camera'};
     try { await this.loadRec(); } catch (e) { return {result: 'error', note: 'Không tải được bộ nhận diện'}; }
+    this.enrolling = true; this.setRes(true); await new Promise(r => setTimeout(r, 400));
     const got = []; const t0 = now();
     while (now() - t0 < 6000 && got.length < 5) {
       const d = await faceapi.detectAllFaces(this.video, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors();
       if (d.length === 1) got.push(Array.from(d[0].descriptor, x => Math.round(x * 1000) / 1000));
-      else if (d.length > 1) return {result: 'error', note: 'Đang thấy nhiều người, cần đứng một mình trước camera'};
+      else if (d.length > 1) { this.enrolling = false; return {result: 'error', note: 'Đang thấy nhiều người, cần đứng một mình trước camera'}; }
       await new Promise(r => setTimeout(r, 200));
     }
+    this.enrolling = false;
     if (got.length < 2) return {result: 'error', note: 'Không thấy rõ mặt ai trước camera'};
     people[name] = (people[name] || []).concat(got).slice(-12); savePeople(); renderPeople();
     this.names.add(name); const sl = slot(); if (sl) { greetLog[name] = sl.key; saveGreet(); } this.recNeed = 0;
@@ -821,7 +870,8 @@ $('#bEnroll').addEventListener('click', async () => {
 });
 $('#bTest').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); stopLive(); setTimeout(startLive, 300); });
 
-window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people};
+window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people, state};
+window.__forceSleep = () => { goSleep(); };
 requestAnimationFrame(frame);
 }
 </script>
