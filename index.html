@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#04060a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Robot K40</title>
 <style>
 /* VOICE: một sinh vật nhỏ, vui tính
@@ -40,6 +43,10 @@ button.pri{background:var(--acc);color:#03222a;border-color:var(--acc)}
 .note{font-size:13px;color:var(--muted)}
 .tel{font-size:14px;color:var(--muted);margin-top:8px}
 a{color:var(--acc)}
+h3{font-size:18px;font-weight:600;margin:26px 0 6px}
+#pv{width:100%;max-width:320px;aspect-ratio:4/3;background:#000;border-radius:12px;transform:scaleX(-1);object-fit:cover;display:block}
+.pp{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.inl{display:flex;gap:10px;flex-wrap:wrap}.inl input{flex:1 1 180px}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -63,6 +70,19 @@ a{color:var(--acc)}
   <label class="chk"><input type="checkbox" id="sCap"> Hiện phụ đề</label>
   <label class="chk"><input type="checkbox" id="sTouchAI"> Robot nói khi bị chạm (lúc đang trò chuyện)</label>
   <div class="row"><label for="sFam">Robot nên biết gì về gia đình (tên mọi người, sở thích, ngày đặc biệt…)</label><textarea id="sFam" placeholder="Ví dụ: Bố tên Hùng, thích bóng đá. Mẹ tên Lan. Bé Na 6 tuổi, thích khủng long."></textarea></div>
+  <h3>Camera</h3>
+  <label class="chk"><input type="checkbox" id="sCam"> Bật camera trước (mắt nhìn theo người)</label>
+  <label class="chk"><input type="checkbox" id="sGreet"> Tự chào khi thấy người</label>
+  <label class="chk"><input type="checkbox" id="sAuto"> Thấy người thì tự bắt chuyện</label>
+  <label class="chk"><input type="checkbox" id="sCamAI"> Cho Gemini nhìn qua camera khi trò chuyện (để hỏi "đây là cái gì")</label>
+  <label class="chk"><input type="checkbox" id="sFollow"> Quay người theo người đang nói chuyện (khi có thân xe)</label>
+  <video id="pv" playsinline muted autoplay></video>
+  <div class="tel" id="vStat">Camera: đang tắt</div>
+  <h3>Người nhà robot đã quen</h3>
+  <p class="note">Đứng trước camera một mình, nhìn thẳng, nhập tên rồi bấm Chụp làm quen (khoảng 3–6 giây). Làm 2–3 lần ở chỗ sáng khác nhau sẽ nhận ra tốt hơn. Cũng có thể nói với robot: "Đây là bé Na, nhớ nhé".</p>
+  <div class="inl"><input id="pName" placeholder="Tên, ví dụ: bé Na" autocomplete="off"><button id="bEnroll">Chụp làm quen</button></div>
+  <div id="pList"></div>
+  <p class="note">Dữ liệu khuôn mặt chỉ lưu trong trình duyệt của máy này, không gửi đi đâu.</p>
   <div class="btns"><button class="pri" id="bSave">Lưu và đóng</button><button id="bBle">Kết nối thân xe</button><button id="bTest">Thử nói chuyện</button></div>
   <div class="tel" id="tel">Thân xe: chưa kết nối</div>
   <p class="note">Khóa API chỉ lưu trong trình duyệt của máy này. Đừng chia sẻ link trang có sẵn khóa cho người ngoài.</p>
@@ -77,7 +97,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- Cài đặt ---------------- */
-const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: ''};
+const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, greet: true, autoTalk: false, camAI: true, follow: true};
 let S = {...DEF};
 try { S = {...DEF, ...JSON.parse(localStorage.getItem('k40robot') || '{}')}; } catch (e) {}
 const saveS = () => { try { localStorage.setItem('k40robot', JSON.stringify(S)); } catch (e) {} };
@@ -156,7 +176,7 @@ function roundRect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); cx.beginPath(
 function heart(x, y, s) { cx.beginPath(); cx.moveTo(x, y + s * .3); cx.bezierCurveTo(x, y, x - s * .5, y, x - s * .5, y + s * .3); cx.bezierCurveTo(x - s * .5, y + s * .6, x, y + s * .8, x, y + s); cx.bezierCurveTo(x, y + s * .8, x + s * .5, y + s * .6, x + s * .5, y + s * .3); cx.bezierCurveTo(x + s * .5, y, x, y, x, y + s * .3); cx.fill(); }
 
 function eyeGeom() {
-  const ew = Math.min(W * .19, H * .36), eh = ew * 1.18, gap = ew * .62;
+  const ew = H > W * 1.2 ? Math.min(W * .3, H * .2) : Math.min(W * .19, H * .36), eh = ew * 1.18, gap = ew * .62;
   return {ew, eh, cy: H * .47, lx: W / 2 - gap / 2 - ew / 2, rx: W / 2 + gap / 2 + ew / 2};
 }
 function drawEye(cxp, cyp, side, g, blink) {
@@ -239,6 +259,7 @@ function frame() {
 let nextGlance = 0;
 function idleGaze(t) {
   if (touch.follow) return;
+  if (vision.main && t - vision.lastSeen < 600) { T.gx = vision.main.gx; T.gy = vision.main.gy; return; }
   if (mood.sulkUntil > t) { T.gx = mood.sulkSide; T.gy = .15; return; }
   if (player.speaking() || (live.ready && micOpen())) { if (t > nextGlance) { T.gx = rand(-.15, .15); T.gy = rand(-.1, .05); nextGlance = t + rand(1500, 3000); } return; }
   if (t > nextGlance) { const big = Math.random() < .3; T.gx = big ? rand(-.9, .9) : rand(-.3, .3); T.gy = big ? rand(-.5, .4) : rand(-.15, .15); nextGlance = t + rand(1200, 4200); }
@@ -343,6 +364,7 @@ async function keepAwake() { try { wakeLock = await navigator.wakeLock?.request(
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
 function firstGesture() {
   if (firstDone) return; firstDone = true; keepAwake();
+  if (S.cam) vision.start();
   try { document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
 }
 
@@ -364,7 +386,7 @@ const player = (() => {
   };
 })();
 
-const live = {ws: null, ready: false, connecting: false, stream: null, node: null, src: null, acc: [], accN: 0, level: 0, lastAct: 0, muteUntil: 0, wasSpeaking: false, lastEvent: 0, outText: '', inRate: 48000};
+const live = {pending: null, ws: null, ready: false, connecting: false, stream: null, node: null, src: null, acc: [], accN: 0, level: 0, lastAct: 0, muteUntil: 0, wasSpeaking: false, lastEvent: 0, outText: '', inRate: 48000};
 let pttHeld = false, workletReady = false;
 function micOpen() {
   if (!live.ready) return false;
@@ -378,7 +400,9 @@ function liveTick(t) {
   if (live.wasSpeaking && !sp) live.muteUntil = t + 350;
   live.wasSpeaking = sp;
   if (sp) live.lastAct = t;
+  if (live.ready && vision.present) live.lastAct = Math.max(live.lastAct, t - 30000);
   if (live.ready && t - live.lastAct > 60000) { stopLive('Hết 1 phút im lặng, robot đi nghỉ'); }
+  if (live.ready && S.camAI && vision.on && t - vision.lastFrame > 1000) { vision.lastFrame = t; const f = vision.jpeg(); if (f) live.ws.send(JSON.stringify({realtimeInput: {video: {data: f, mimeType: 'image/jpeg'}}})); }
 }
 
 const TOOLS = [{functionDeclarations: [
@@ -389,7 +413,10 @@ const TOOLS = [{functionDeclarations: [
   {name: 'look', description: 'Nhìn về một hướng: ngửa mặt lên (len), cúi xuống (xuong), trái, phải hoặc nhìn thẳng (giua).',
    parameters: {type: 'OBJECT', properties: {direction: {type: 'STRING', enum: ['len', 'xuong', 'trai', 'phai', 'giua']}}, required: ['direction']}},
   {name: 'move', description: 'Lái thân xe robot một đoạn ngắn. Chỉ dùng khi người dùng bảo robot di chuyển.',
-   parameters: {type: 'OBJECT', properties: {action: {type: 'STRING', enum: ['tien', 'lui', 'quay_trai', 'quay_phai', 'dung']}, seconds: {type: 'NUMBER', description: 'Thời gian, tối đa 3 giây'}}, required: ['action']}}
+   parameters: {type: 'OBJECT', properties: {action: {type: 'STRING', enum: ['tien', 'lui', 'quay_trai', 'quay_phai', 'dung']}, seconds: {type: 'NUMBER', description: 'Thời gian, tối đa 3 giây'}}, required: ['action']}},
+  {name: 'remember_person', description: 'Ghi nhớ khuôn mặt người đang đứng trước camera với tên được giới thiệu, ví dụ khi người dùng nói "đây là bé Na".',
+   parameters: {type: 'OBJECT', properties: {name: {type: 'STRING', description: 'Tên để gọi người đó'}}, required: ['name']}},
+  {name: 'who_is_here', description: 'Hỏi xem camera đang thấy những ai (người quen thì có tên).', parameters: {type: 'OBJECT', properties: {}}}
 ]}];
 function sysPrompt() {
   const d = new Date();
@@ -398,6 +425,10 @@ Luôn nói tiếng Việt tự nhiên, thân thiện, hơi tinh nghịch, phù h
 Thường xuyên gọi công cụ set_expression để mặt hợp với cảm xúc lời nói. Gật hoặc lắc đầu bằng công cụ gesture khi hợp lý.
 Khi thấy dòng bắt đầu bằng [Sự kiện: ...] thì đó là việc người dùng vừa chạm vào mặt bạn: phản ứng thật ngắn, dễ thương, đừng nhắc tới chữ "sự kiện".
 Nếu công cụ báo lỗi (ví dụ thân xe chưa kết nối) thì nói thật là chưa làm được.
+${S.camAI && S.cam ? 'Bạn nhìn được qua camera trước mặt: ảnh gửi kèm liên tục là cảnh trước mặt bạn. Khi được hỏi "đây là cái gì", "mình đang cầm gì" thì nhìn ảnh rồi trả lời.' : ''}
+Bạn không tự nhận ra ai từ ảnh; tên người do hệ thống nhận diện khuôn mặt của bạn cho biết qua dòng [Sự kiện: ...] hoặc công cụ who_is_here. Khi có người giới thiệu "đây là ..." hoặc dặn bạn nhớ mặt ai thì gọi remember_person với đúng tên đó.
+Khi [Sự kiện] báo có người vừa xuất hiện: chào họ bằng tên nếu biết. Nếu đang gần dịp đặc biệt (Tết Nguyên đán, Trung thu, Giáng sinh, Tết dương lịch, hoặc sinh nhật ai trong gia đình) thì chúc cho phù hợp.
+Người nhà bạn đã quen mặt: ${Object.keys(people).join(', ') || 'chưa có ai'}.
 Hôm nay là ${d.toLocaleDateString('vi-VN', {weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric'})}, bây giờ khoảng ${d.getHours()} giờ ${d.getMinutes()} phút.
 ${S.fam ? 'Những điều bạn biết về gia đình:\n' + S.fam : ''}`;
 }
@@ -465,13 +496,14 @@ function onMic(f32) {
 }
 function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
 function sendAudio(pcm) { if (live.ws && live.ready) live.ws.send(JSON.stringify({realtimeInput: {audio: {data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000'}}})); }
-function sendEvent(text) {
-  if (!live.ready || !S.touchAI || player.speaking() || now() - live.lastEvent < 7000) return;
+function sendEvent(text, force) {
+  if (!live.ready || player.speaking() || (!force && (!S.touchAI || now() - live.lastEvent < 7000))) return false;
   live.lastEvent = now(); live.lastAct = now();
   live.ws.send(JSON.stringify({realtimeInput: {text: '[Sự kiện: ' + text + ']'}}));
+  return true;
 }
 function onServer(m) {
-  if (m.setupComplete) { live.ready = true; live.connecting = false; live.lastAct = now(); setExpr('happy', 1200); caption('Mình đang nghe nè!', 2500); return; }
+  if (m.setupComplete) { live.ready = true; live.connecting = false; live.lastAct = now(); setExpr('happy', 1200); caption('Mình đang nghe nè!', 2500); if (!live.pending && vision.names.size) live.pending = 'Bạn đang nhìn thấy ' + [...vision.names].join(', ') + ' trước mặt'; if (live.pending) { const p = live.pending; live.pending = null; setTimeout(() => sendEvent(p, true), 300); } return; }
   if (m.goAway) { caption('Phiên trò chuyện sắp hết, chạm 2 lần để nói tiếp', 4000); }
   if (m.toolCall) { handleTools(m.toolCall.functionCalls || []); }
   const sc = m.serverContent; if (!sc) return;
@@ -483,8 +515,9 @@ function onServer(m) {
   if (sc.turnComplete) live.outText = '';
 }
 const EXMAP = {vui: 'happy', yeu_thuong: 'love', buon: 'sad', ngac_nhien: 'surprised', gian: 'angry', buon_ngu: 'sleepy', suy_nghi: 'thinking', xau_ho: 'shy', binh_thuong: 'neutral'};
-function handleTools(calls) {
-  const res = calls.map(c => {
+async function handleTools(calls) {
+  const res = [];
+  for (const c of calls) {
     const a = c.args || {}; let out = {result: 'ok'};
     if (c.name === 'set_expression') { setExpr(EXMAP[a.expression] || 'neutral', 3500); if (a.expression === 'suy_nghi') burst('q', 1); }
     else if (c.name === 'gesture') { nod(a.type === 'khong' ? 'no' : 'yes'); if (a.type !== 'khong') robot.nod(); }
@@ -499,9 +532,11 @@ function handleTools(calls) {
         const m = {tien: [v, v], lui: [-v, -v], quay_trai: [-v, v], quay_phai: [v, -v], dung: [0, 0]}[a.action] || [0, 0];
         robot.drive(m[0], m[1], a.action === 'dung' ? 0 : ms); }
     }
+    else if (c.name === 'remember_person') { setExpr('thinking', 2500); out = await vision.enroll(String(a.name || '').trim()); if (out.result === 'ok') { setExpr('happy', 1500); SFX.purr(); } }
+    else if (c.name === 'who_is_here') { out = vision.on ? {result: 'ok', known: [...vision.names], so_nguoi_thay: vision.count} : {result: 'error', note: 'Camera đang tắt'}; }
     else out = {result: 'error', note: 'Không có công cụ này'};
-    return {id: c.id, name: c.name, response: out};
-  });
+    res.push({id: c.id, name: c.name, response: out});
+  }
   if (live.ws && live.ready) live.ws.send(JSON.stringify({toolResponse: {functionResponses: res}}));
 }
 function startPTT() {
@@ -512,6 +547,135 @@ function startPTT() {
 function stopPTT() {
   touch.ptt = false; pttHeld = false;
   if (live.ready && S.mode === 'ptt') { live.ws.send(JSON.stringify({realtimeInput: {audioStreamEnd: true}})); setExpr('thinking', 1500); }
+}
+
+
+/* ---------------- Camera: dò mặt, nhận người quen ---------------- */
+let people = {};
+try { people = JSON.parse(localStorage.getItem('k40people') || '{}'); } catch (e) {}
+const savePeople = () => { try { localStorage.setItem('k40people', JSON.stringify(people)); } catch (e) { toast('Không lưu được dữ liệu khuôn mặt'); } };
+const FA = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/';
+const vision = {
+  on: false, stream: null, video: null, loadP: null, recP: null, busy: false, faces: [], main: null, count: 0,
+  present: false, lastSeen: 0, absentSince: 0, names: new Set(), lastNames: '', lastRec: 0, lastGreet: {}, lastFrame: 0, lastTurn: 0, lastHead: 0,
+  can: document.createElement('canvas'),
+  load() {
+    if (!this.loadP) this.loadP = new Promise((ok, bad) => { if (window.faceapi) return ok(); const sc = document.createElement('script'); sc.src = FA + 'dist/face-api.js'; sc.onload = ok; sc.onerror = () => bad(new Error('Không tải được bộ nhận diện mặt')); document.head.appendChild(sc); })
+      .then(async () => { await faceapi.tf.ready(); await faceapi.nets.tinyFaceDetector.loadFromUri(FA + 'model'); })
+      .catch(e => { this.loadP = null; throw e; });
+    return this.loadP;
+  },
+  loadRec() {
+    if (!this.recP) this.recP = this.load().then(() => Promise.all([faceapi.nets.faceLandmark68TinyNet.loadFromUri(FA + 'model'), faceapi.nets.faceRecognitionNet.loadFromUri(FA + 'model')])).catch(e => { this.recP = null; throw e; });
+    return this.recP;
+  },
+  async start() {
+    if (this.on || this.starting) return; this.starting = true; vStat('Camera: đang mở…');
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 640}, height: {ideal: 480}}, audio: false});
+      this.video = document.createElement('video'); this.video.playsInline = true; this.video.muted = true; this.video.setAttribute('playsinline', '');
+      this.video.srcObject = this.stream; await this.video.play().catch(() => {});
+      $('#pv').srcObject = this.stream; $('#pv').play().catch(() => {});
+      vStat('Camera: đang tải bộ nhận diện mặt…');
+      await this.load(); this.on = true; vStat('Camera: đang bật');
+      if (Object.keys(people).length) this.loadRec().catch(() => {});
+      this.loop();
+    } catch (e) { this.stopStream(); vStat('Camera: lỗi – ' + (e.message || e.name)); toast('Không mở được camera: ' + (e.message || e.name), 5000); }
+    this.starting = false;
+  },
+  stopStream() { this.on = false; this.stream && this.stream.getTracks().forEach(t => t.stop()); this.stream = null; this.main = null; this.present = false; this.count = 0; this.names.clear(); },
+  stop() { this.stopStream(); vStat('Camera: đang tắt'); },
+  async loop() {
+    while (this.on) {
+      const t0 = now();
+      try { await this.tick(); } catch (e) {}
+      await new Promise(r => setTimeout(r, Math.max(30, 140 - (now() - t0))));
+    }
+  },
+  async tick() {
+    const v = this.video; if (!v || v.readyState < 2 || !v.videoWidth) return;
+    const t = now(), vw = v.videoWidth, vh = v.videoHeight;
+    const wantRec = this.recReady() && t - this.lastRec > 900;
+    let dets;
+    if (wantRec) { this.lastRec = t; dets = await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors(); }
+    else dets = await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: 224, scoreThreshold: .5}));
+    const boxes = dets.map(d => ({box: (d.detection || d).box, desc: d.descriptor || null}));
+    this.count = boxes.length;
+    if (wantRec) { this.names.clear(); for (const b of boxes) { const n = matchFace(b.desc); if (n) this.names.add(n); } }
+    if (boxes.length) {
+      const b = boxes.reduce((a, c) => c.box.width * c.box.height > a.box.width * a.box.height ? c : a).box;
+      const cxn = (b.x + b.width / 2) / vw, cyn = (b.y + b.height / 2) / vh;
+      this.main = {gx: clamp((.5 - cxn) * 2.4, -1, 1), gy: clamp((cyn - .42) * 2.2, -1, 1), size: b.width / vw};
+      this.lastSeen = t;
+      if (!this.present && t - this.absentSince > 4000) { this.present = true; setTimeout(() => this.arrive(), this.recReady() ? 1300 : 200); }
+      this.present = true;
+      this.follow(t);
+    } else if (this.present && t - this.lastSeen > 3000) { this.present = false; this.absentSince = t; this.names.clear(); this.lastNames = ''; }
+    const ns = [...this.names].sort().join(', ');
+    if (ns !== this.lastNames) { this.lastNames = ns; if (ns && live.ready) sendEvent('Bạn đang nhìn thấy ' + ns, true); }
+    vStat(`Camera: đang bật · thấy ${this.count} người${ns ? ' · nhận ra: ' + ns : ''}`);
+  },
+  recReady() { return !!this.recP && faceapi.nets.faceRecognitionNet.isLoaded && Object.keys(people).length > 0; },
+  arrive() {
+    if (!this.present) return;
+    state.lastTouch = now(); if (state.sleep) wakeIfSleeping();
+    const t = now(), names = [...this.names];
+    const fresh = names.filter(n => t - (this.lastGreet[n] || -1e9) > 600000);
+    const unknownOk = !names.length && t - (this.lastGreet['?'] || -1e9) > 300000;
+    if (!fresh.length && !unknownOk) return;
+    (fresh.length ? fresh : ['?']).forEach(n => this.lastGreet[n] = t);
+    const who = fresh.length ? fresh.join(' và ') : 'Có một người';
+    const ev = who + ' vừa xuất hiện trước mặt bạn';
+    if (live.ready) { sendEvent(ev, true); return; }
+    if (S.autoTalk && S.key) { live.pending = ev; startLive(); return; }
+    if (S.greet) { setExpr('happy', 2000); SFX.wake(); say(fresh.length ? 'Chào ' + fresh.join(' và ') + '!' : 'Xin chào!'); }
+  },
+  follow(t) {
+    if (!robot.ok || !S.follow || !this.main) return;
+    const m = this.main;
+    if (Math.abs(m.gx) > .45 && t - this.lastTurn > 700) { this.lastTurn = t; const d = m.gx < 0 ? -1 : 1; robot.drive(-d * 130, d * 130, 160); }
+    if (t - this.lastHead > 300) { const a = clamp(Math.round(-m.gy * 22), -12, 25); if (Math.abs(a - robot.headAngle) >= 4) { this.lastHead = t; robot.head(a); } }
+  },
+  jpeg() {
+    const v = this.video; if (!v || !v.videoWidth) return null;
+    const w = 512, h = Math.round(w * v.videoHeight / v.videoWidth); this.can.width = w; this.can.height = h;
+    const c = this.can.getContext('2d'); c.drawImage(v, 0, 0, w, h);
+    return this.can.toDataURL('image/jpeg', .6).split(',')[1];
+  },
+  async enroll(name) {
+    if (!name) return {result: 'error', note: 'Chưa có tên'};
+    if (!this.on) await this.start();
+    if (!this.on) return {result: 'error', note: 'Không mở được camera'};
+    try { await this.loadRec(); } catch (e) { return {result: 'error', note: 'Không tải được bộ nhận diện'}; }
+    const got = []; const t0 = now();
+    while (now() - t0 < 6000 && got.length < 5) {
+      const d = await faceapi.detectAllFaces(this.video, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors();
+      if (d.length === 1) got.push(Array.from(d[0].descriptor, x => Math.round(x * 1000) / 1000));
+      else if (d.length > 1) return {result: 'error', note: 'Đang thấy nhiều người, cần đứng một mình trước camera'};
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (got.length < 2) return {result: 'error', note: 'Không thấy rõ mặt ai trước camera'};
+    people[name] = (people[name] || []).concat(got).slice(-12); savePeople(); renderPeople();
+    this.names.add(name); this.lastGreet[name] = now();
+    return {result: 'ok', note: 'Đã nhớ mặt ' + name};
+  }
+};
+function matchFace(desc) {
+  if (!desc) return null; let best = null, bd = .52;
+  for (const [n, arr] of Object.entries(people)) for (const p of arr) { let s = 0; for (let i = 0; i < 128; i++) { const d = desc[i] - p[i]; s += d * d; } s = Math.sqrt(s); if (s < bd) { bd = s; best = n; } }
+  return best;
+}
+function vStat(t) { const el = $('#vStat'); if (el) el.textContent = t; }
+function renderPeople() {
+  const el = $('#pList'); el.textContent = '';
+  const names = Object.keys(people);
+  if (!names.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = 'Chưa quen ai.'; el.appendChild(p); return; }
+  for (const n of names) {
+    const row = document.createElement('div'); row.className = 'pp';
+    const sp = document.createElement('span'); sp.textContent = `${n} (${people[n].length} ảnh)`;
+    const b = document.createElement('button'); b.textContent = 'Xóa'; b.onclick = () => { delete people[n]; savePeople(); renderPeople(); };
+    row.append(sp, b); el.appendChild(row);
+  }
 }
 
 /* ---------------- Thân xe qua Bluetooth (ESP32, Nordic UART) ---------------- */
@@ -554,19 +718,30 @@ function openSettings() {
   stopPTTIfAny();
   $('#sName').value = S.name; $('#sKey').value = S.key; $('#sModel').value = S.model; $('#sVoice').value = S.voice; $('#sMode').value = S.mode;
   $('#sBarge').checked = S.barge; $('#sCap').checked = S.cap; $('#sTouchAI').checked = S.touchAI; $('#sFam').value = S.fam;
+  $('#sCam').checked = S.cam; $('#sGreet').checked = S.greet; $('#sAuto').checked = S.autoTalk; $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; renderPeople();
+  if (S.cam && !vision.on) vision.start();
   showTel(); $('#set').classList.add('on');
 }
 function stopPTTIfAny() { if (touch.ptt) stopPTT(); }
 function readSettings() {
   S.name = $('#sName').value.trim() || 'Bi'; S.key = $('#sKey').value.trim(); S.model = $('#sModel').value.trim() || DEF.model;
   S.voice = $('#sVoice').value; S.mode = $('#sMode').value; S.barge = $('#sBarge').checked; S.cap = $('#sCap').checked; S.touchAI = $('#sTouchAI').checked; S.fam = $('#sFam').value.trim();
+  S.cam = $('#sCam').checked; S.greet = $('#sGreet').checked; S.autoTalk = $('#sAuto').checked; S.camAI = $('#sCamAI').checked; S.follow = $('#sFollow').checked;
+  if (S.cam && !vision.on) vision.start(); if (!S.cam && vision.on) vision.stop();
   saveS();
 }
 $('#bSave').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); if (live.ready) { stopLive(); caption('Đã lưu. Chạm 2 lần để nói chuyện với cài đặt mới', 3500); } });
 $('#bBle').addEventListener('click', () => robot.connect());
+$('#sCam').addEventListener('change', e => { if (e.target.checked) vision.start(); else vision.stop(); });
+$('#bEnroll').addEventListener('click', async () => {
+  const n = $('#pName').value.trim(); if (!n) { toast('Nhập tên trước đã'); return; }
+  const b = $('#bEnroll'); b.disabled = true; b.textContent = 'Đang chụp… nhìn thẳng camera';
+  const r = await vision.enroll(n); b.disabled = false; b.textContent = 'Chụp làm quen';
+  toast(r.result === 'ok' ? 'Đã nhớ mặt ' + n : r.note, 4000); if (r.result === 'ok') $('#pName').value = '';
+});
 $('#bTest').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); stopLive(); setTimeout(startLive, 300); });
 
-window.__k40 = {setExpr, nod, burst, S, mood};
+window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people};
 requestAnimationFrame(frame);
 }
 </script>
