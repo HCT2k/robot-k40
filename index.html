@@ -25,6 +25,12 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 #cap{position:fixed;left:50%;bottom:2.2vh;transform:translateX(-50%);max-width:80vw;text-align:center;
   font-size:clamp(12px,2vw,17px);color:var(--ink);opacity:0;transition:opacity .4s;pointer-events:none;text-wrap:balance}
 #cap.on{opacity:.85}
+#camOv{position:fixed;top:50%;height:min(48vh,46vw);aspect-ratio:4/3;transform:translateY(-50%);border:3px solid var(--acc);border-radius:16px;overflow:hidden;background:#000;display:none;z-index:5;pointer-events:none}
+#camOv.on{display:block}#camOv.left{left:2vw}#camOv.right{right:2vw}#camOv.top{top:3vh;left:50%;transform:translateX(-50%);height:auto;width:min(70vw,360px)}
+#camOv video,#camOv canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#ovt{position:absolute;left:0;right:0;bottom:0;padding:6px 10px;background:rgba(4,6,10,.7);color:var(--ink);font-size:clamp(12px,1.8vw,16px);text-align:center}
+#ovArrow{position:fixed;top:50%;transform:translateY(-50%);color:var(--acc);font-size:clamp(14px,2.2vw,20px);display:none;z-index:5;pointer-events:none}
+#ovArrow.on{display:block}
 #toast{position:fixed;left:50%;top:5vh;transform:translateX(-50%);background:#132331;border:1px solid var(--line);
   padding:10px 16px;border-radius:12px;max-width:88vw;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
@@ -57,6 +63,8 @@ h3{font-size:18px;font-weight:600;margin:26px 0 6px}
 <canvas id="cv"></canvas>
 <div id="cap"></div>
 <div id="toast"></div>
+<div id="camOv"><video id="ovv" playsinline muted autoplay></video><canvas id="ovc"></canvas><div id="ovt"></div></div>
+<div id="ovArrow"></div>
 <div id="hint">Chạm 2 lần để nói chuyện · xoa nhẹ để vuốt ve · giữ 3 giây ở góc trên bên trái để mở cài đặt</div>
 
 <div id="set" role="dialog" aria-label="Cài đặt robot">
@@ -74,14 +82,28 @@ h3{font-size:18px;font-weight:600;margin:26px 0 6px}
   <label class="chk"><input type="checkbox" id="sCap"> Hiện phụ đề</label>
   <label class="chk"><input type="checkbox" id="sTouchAI"> Robot nói khi bị chạm (lúc đang trò chuyện)</label>
   <div class="row"><label for="sFam">Robot nên biết gì về gia đình (tên mọi người, sở thích, ngày đặc biệt…)</label><textarea id="sFam" placeholder="Ví dụ: Bố tên Hùng, thích bóng đá. Mẹ tên Lan. Bé Na 6 tuổi, thích khủng long."></textarea></div>
+  <h3>Lúc rảnh</h3>
+  <label class="chk"><input type="checkbox" id="sIdle"> Bi tự chơi khi rảnh (ngáp, đuổi ruồi, hát, thổi bong bóng…), buồn ngủ theo giờ trong ngày</label>
+  <label class="chk"><input type="checkbox" id="sInvite"> Thỉnh thoảng Bi rủ người đang ở gần chơi (mỗi người tối đa 1 lần/giờ, 8h–21h, chỉ ở chế độ Luôn hoạt động; tốn lượt Gemini)</label>
+  <div class="row"><label for="sCity">Nơi ở (để Bi báo thời tiết khi chào buổi sáng, bỏ trống nếu không cần)</label><input id="sCity" placeholder="Ví dụ: Hà Nội" autocomplete="off"></div>
   <h3>Camera</h3>
   <div class="row"><label for="sAct">Chế độ hoạt động</label>
    <select id="sAct"><option value="always">Luôn hoạt động: camera bật, thấy người thì tự chào</option><option value="touch">Chạm mới hoạt động: ngủ và tắt camera, chạm vào mới thức dậy</option></select></div>
   <label class="chk"><input type="checkbox" id="sCam"> Dùng camera trước (mắt nhìn theo người, nhận người quen)</label>
+  <label class="chk"><input type="checkbox" id="sCamOv"> Hiện hình camera khi Bi đang nhận mặt hoặc chụp làm quen</label>
   <label class="chk"><input type="checkbox" id="sCamAI"> Cho Gemini nhìn qua camera khi trò chuyện (để hỏi "đây là cái gì")</label>
   <label class="chk"><input type="checkbox" id="sFollow"> Quay người theo người đang nói chuyện (khi có thân xe)</label>
   <video id="pv" playsinline muted autoplay></video>
   <div class="tel" id="vStat">Camera: đang tắt</div>
+  <h3>Báo thức và nhắc việc</h3>
+  <p class="note">Nói với Bi, ví dụ: "6 giờ sáng mai gọi anh dậy", "10 phút nữa nhắc chị tắt bếp", "8 giờ tối hằng ngày nhắc bà đi ngủ". Báo thức chỉ kêu khi app đang mở trên màn hình.</p>
+  <div id="rList"></div>
+  <h3>Sổ ký ức của Bi</h3>
+  <p class="note">Sau mỗi lần trò chuyện, Bi tự ghi vài điều đáng nhớ để lần sau hỏi lại. Chỉ lưu trong máy này; khi trò chuyện, sổ được gửi kèm cho Gemini.</p>
+  <label class="chk"><input type="checkbox" id="sMem"> Cho Bi tự ghi nhớ sau mỗi lần trò chuyện</label>
+  <div class="row"><label for="sMemModel">Mô hình dùng để tóm tắt</label><input id="sMemModel" spellcheck="false"></div>
+  <div id="mList"></div>
+  <div class="btns"><button id="bMemTidy">Dọn sổ ngay</button><button id="bMemClear">Xóa hết sổ ký ức</button></div>
   <h3>Người nhà robot đã quen</h3>
   <p class="note">Đứng trước camera một mình, nhìn thẳng, nhập tên rồi bấm Chụp làm quen (khoảng 3–6 giây). Làm 2–3 lần ở chỗ sáng khác nhau sẽ nhận ra tốt hơn. Cũng có thể nói với robot: "Đây là bé Na, nhớ nhé".</p>
   <div class="inl"><input id="pName" placeholder="Tên, ví dụ: bé Na" autocomplete="off"><button id="bEnroll">Chụp làm quen</button></div>
@@ -89,7 +111,10 @@ h3{font-size:18px;font-weight:600;margin:26px 0 6px}
   <p class="note">Dữ liệu khuôn mặt chỉ lưu trong trình duyệt của máy này, không gửi đi đâu.</p>
   <div class="btns"><button class="pri" id="bSave">Lưu và đóng</button><button id="bBle">Kết nối thân xe</button><button id="bTest">Thử nói chuyện</button></div>
   <div class="tel" id="tel">Thân xe: chưa kết nối</div>
-  <p class="note"><b>Phiên bản app: 4.7</b></p>
+  <label class="chk"><input type="checkbox" id="sAutoChg"> Tự ngắt sạc để giữ pin điện thoại bền (cần thân xe)</label>
+  <div class="inl"><label for="sChgLo">Sạc lại khi pin còn</label><input id="sChgLo" type="number" min="20" max="70" style="width:5em">%<label for="sChgHi">ngắt khi đầy</label><input id="sChgHi" type="number" min="50" max="100" style="width:5em">%</div>
+  <p class="note">Ngủ sâu: không có ai khoảng 3 phút sau khi Bi ngủ thì màn hình đen hẳn. Khi có thân xe, camera tắt luôn và cảm biến chuyển động sẽ đánh thức Bi (ban đêm 23h–5h thì không). Khi chưa có thân xe, camera vẫn dò người rất chậm để đánh thức. Chạm vào màn hình luôn đánh thức được.</p>
+  <p class="note"><b>Phiên bản app: 5.3</b></p>
   <p class="note">Khóa API chỉ lưu trong trình duyệt của máy này. Đừng chia sẻ link trang có sẵn khóa cho người ngoài.</p>
  </div>
 </div>
@@ -102,7 +127,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- Cài đặt ---------------- */
-const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, act: 'always', camAI: true, follow: true, mouth: true};
+const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, act: 'always', camAI: true, follow: true, mouth: true, mem: true, memModel: 'gemini-flash-latest', camOv: true, idle: true, invite: true, city: '', autoChg: true, chgLo: 40, chgHi: 80};
 let S = {...DEF};
 try { S = {...DEF, ...JSON.parse(localStorage.getItem('k40robot') || '{}')}; } catch (e) {}
 const saveS = () => { try { localStorage.setItem('k40robot', JSON.stringify(S)); } catch (e) {} };
@@ -157,6 +182,7 @@ const EXPR = {
   sleep:    {open: .04, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: .1,   brow: -.4, btilt: 0,   curve: .1,  mo: 0,   mw: .45, blush: 0},
   thinking: {open: .85, tin: .06,  tout: 0,   happy: 0,   scale: .98,  dy: 0,    brow: .15, btilt: 0,   curve: -.15,mo: 0,   mw: .55, blush: 0},
   wince:    {open: .12, tin: 0,    tout: 0,   happy: 0,   scale: 1,    dy: 0,    brow: -.6, btilt: -.5, curve: 0,   mo: 0,   mw: .9,  blush: 0},
+  yawn:     {open: .2,  tin: 0,    tout: .1,  happy: 0,   scale: 1.02, dy: .02,  brow: .35, btilt: .2,  curve: 0,   mo: 1.2, mw: .7,  blush: 0},
   shy:      {open: .9,  tin: 0,    tout: .08, happy: .35, scale: .94,  dy: .05,  brow: .1,  btilt: .35, curve: .55, mo: 0,   mw: .6,  blush: 1}
 };
 const F = {open: 1, tin: 0, tout: 0, happy: 0, scale: 1, dy: 0, brow: 0, btilt: 0, curve: .3, mo: 0, mw: 1, blush: 0, gx: 0, gy: 0, wince: 0, bounce: 0, listen: 0};
@@ -169,12 +195,12 @@ function baseExpr() {
   if (mood.sulkUntil > now()) return 'angry';
   if (state.sleep) return 'sleep';
   const idle = now() - state.lastTouch;
-  if (!live.ready && idle > 60000) return 'sleepy';
+  if (!live.ready && idle > tod().sleepyAfter) return 'sleepy';
   if (mood.love > 3) return 'happy';
   return 'neutral';
 }
 function setExpr(name, ms = 2500) { if (!EXPR[name]) name = 'neutral'; expr = name; exprUntil = now() + ms; if (name === 'love') burst('heart', 4); if (name === 'sad') burst('tear', 1); }
-function burst(kind, n) { for (let i = 0; i < n; i++) particles.push({kind, x: rand(-1, 1), y: 0, t: 0, life: kind === 'tear' ? 1.6 : 1.8, side: Math.random() < .5 ? -1 : 1, d: i * .18}); }
+function burst(kind, n) { for (let i = 0; i < n; i++) particles.push({kind, x: rand(-1, 1), y: 0, t: 0, life: kind === 'tear' ? 1.6 : kind === 'bubble' ? rand(3, 5) : 1.8, side: Math.random() < .5 ? -1 : 1, d: i * .18}); }
 function nod(kind) { nodAnim = {kind, t: 0}; }
 
 function roundRect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
@@ -254,6 +280,8 @@ function drawParticles(g, dt) {
     if (p.kind === 'tear') { cx.globalAlpha = a; cx.fillStyle = '#7fc8ff'; const ex = p.side < 0 ? g.lx - g.ew * .35 : g.rx + g.ew * .35; cx.beginPath(); cx.arc(ex, g.cy + g.eh * .35 + t * g.eh * .7, g.ew * .06, 0, Math.PI * 2); cx.fill(); }
     if (p.kind === 'z') { cx.globalAlpha = a; cx.fillStyle = '#8aa4b4'; cx.font = `600 ${g.ew * (.18 + t * .08)}px system-ui`; cx.fillText('z', g.rx + g.ew * .6 + t * 30, g.cy - g.eh * .5 - t * 40); }
     if (p.kind === 'q') { cx.globalAlpha = a; cx.fillStyle = '#ffd166'; cx.font = `700 ${g.ew * .3}px system-ui`; cx.fillText('?', g.rx + g.ew * .55, g.cy - g.eh * .55 - t * 20); }
+    if (p.kind === 'note') { cx.globalAlpha = a; cx.fillStyle = '#9fd3f0'; cx.font = `700 ${g.ew * .26}px system-ui`; cx.fillText(p.side < 0 ? '♪' : '♫', W / 2 + p.x * g.ew * 1.6 + Math.sin(t * 5) * 10, g.cy - g.eh * .6 - t * g.eh * .8); }
+    if (p.kind === 'bubble') { const r = g.ew * (.07 + .05 * Math.abs(p.x)), bx = W / 2 + p.x * W * .3 + Math.sin(t * 3 + p.x * 9) * 14, by = H * .95 - t / p.life * H * .9; cx.globalAlpha = a < .12 ? 1 : .8; cx.strokeStyle = '#bfe6ff'; cx.lineWidth = 2; cx.beginPath(); cx.arc(bx, by, a < .12 ? r * 1.4 : r, 0, Math.PI * 2); cx.stroke(); cx.globalAlpha = .35; cx.fillStyle = '#ffffff'; cx.beginPath(); cx.arc(bx - r * .35, by - r * .35, r * .22, 0, Math.PI * 2); cx.fill(); }
     if (p.kind === 'bang') { cx.globalAlpha = a; cx.fillStyle = '#ff8f6b'; cx.font = `800 ${g.ew * .3}px system-ui`; cx.fillText('!', g.rx + g.ew * .6, g.cy - g.eh * .6); }
   }
   cx.globalAlpha = 1;
@@ -278,9 +306,10 @@ let last = now();
 function frame() {
   const t = now();
   const busy = player.speaking() || touch.down || nodAnim || particles.length || live.connecting || blinkT >= 0 || (live.ready && micOpen()) || Math.abs(F.gx - T.gx) + Math.abs(F.gy - T.gy) > .02;
-  const gap = state.sleep ? 125 : busy ? 33 : 66;
+  const gap = state.deep ? 1000 : state.sleep ? 125 : busy || idleAct.fly ? 33 : 66;
   if (t - last < gap - 4) { requestAnimationFrame(frame); return; }
   const dt = Math.min(.15, (t - last) / 1000); last = t;
+  if (state.deep) { last = t; cx.fillStyle = '#000'; cx.fillRect(0, 0, W, H); robotTick(t); liveTick(t); requestAnimationFrame(frame); return; }
   if (t > exprUntil) expr = baseExpr();
   const E = EXPR[expr], k = 1 - Math.exp(-dt * 11);
   for (const key of ['open', 'tin', 'tout', 'happy', 'scale', 'dy', 'brow', 'btilt', 'curve', 'mo', 'mw', 'blush']) F[key] += (E[key] - F[key]) * k;
@@ -301,7 +330,8 @@ function frame() {
   drawBlush(g.lx, -1, g); drawBlush(g.rx, 1, g);
   if (F.wince < .5 && expr !== 'sleep') { drawBrow(g.lx, -1, g); drawBrow(g.rx, 1, g); }
   if (S.mouth) drawMouth(g, t);
-  drawParticles(g, dt); drawStatus(g); drawHold(t);
+  drawParticles(g, dt); drawFly(g, t); drawStatus(g); drawHold(t);
+  idleTick(t);
   robotTick(t);
   liveTick(t);
   requestAnimationFrame(frame);
@@ -310,6 +340,8 @@ function frame() {
 let nextGlance = 0;
 function idleGaze(t) {
   if (touch.follow) return;
+  if (idleAct.fly) { const f = flyPos(t); T.gx = f.gx; T.gy = f.gy; return; }
+  if (idleAct.look && t < idleAct.look.until) { T.gx = idleAct.look.gx; T.gy = idleAct.look.gy; return; }
   if (vision.main && t - vision.lastSeen < 600) { T.gx = vision.main.gx; T.gy = vision.main.gy; return; }
   if (mood.sulkUntil > t) { T.gx = mood.sulkSide; T.gy = .15; return; }
   if (player.speaking() || (live.ready && micOpen())) { if (t > nextGlance) { T.gx = rand(-.15, .15); T.gy = rand(-.1, .05); nextGlance = t + rand(1500, 3000); } return; }
@@ -318,13 +350,17 @@ function idleGaze(t) {
 
 /* ---------------- Tâm trạng ---------------- */
 const mood = {love: 0, annoy: 0, sulkUntil: 0, sulkSide: .9};
-const state = {sleep: S.act === 'touch', lastTouch: now()};
-function camWanted() { return S.cam && firstDone && (S.act === 'always' || !state.sleep); }
+const state = {sleep: S.act === 'touch', deep: false, sleepSince: now(), lastTouch: now()};
+function camWanted() { return S.cam && firstDone && (S.act === 'always' || !state.sleep) && !(state.deep && (robot.ok || isNight())); }
 function syncCam() { if (camWanted()) { if (!vision.on) vision.start(); } else if (vision.on || vision.stream) vision.stop(); }
-function goSleep() { if (state.sleep) return; state.sleep = true; SFX.sleep(); syncCam(); }
-function wakeUp() { if (!state.sleep) return; state.sleep = false; state.lastTouch = now(); syncCam(); }
+function goSleep() { if (state.sleep) return; cancelIdle(); state.sleep = true; state.sleepSince = now(); SFX.sleep(); syncCam(); }
+function goDeep() { if (state.deep) return; cancelIdle(); state.sleep = true; state.deep = true; particles = []; syncCam(); }
+function pirWake() { if (!state.deep || S.act !== 'always' || isNight()) return; state.deep = false; state.sleepSince = now() - 120000; syncCam(); }
+function wakeUp() { if (!state.sleep) return; state.sleep = false; state.deep = false; state.lastTouch = now(); syncCam(); }
 setInterval(() => { mood.love = Math.max(0, mood.love - .15); mood.annoy = Math.max(0, mood.annoy - .1);
-  if (!live.ready && !state.sleep && now() - state.lastTouch > 120000 && !(vision.present && S.act === 'always')) goSleep(); }, 1000);
+  if (!live.ready && !state.sleep && !ring && now() - state.lastTouch > tod().sleepAfter && !(vision.present && S.act === 'always' && !isNight())) goSleep();
+  if (state.sleep && !state.deep && !live.ready && !vision.present && now() - state.sleepSince > 180000) goDeep();
+  if (state.deep) syncCam(); }, 1000);
 
 /* ---------------- Cảm ứng ---------------- */
 const touch = {down: false, x0: 0, y0: 0, t0: 0, path: 0, rev: 0, lastDx: 0, lastX: 0, lastY: 0, moved: false, follow: false, pressT: 0, ptt: false, corner: 0, lastTap: 0, tapTimer: 0, petAt: 0};
@@ -339,7 +375,7 @@ function drawHold(t) {
 }
 
 cv.addEventListener('pointerdown', e => {
-  firstGesture(); ac();
+  firstGesture(); ac(); cancelIdle();
   Object.assign(touch, {down: true, x0: e.clientX, y0: e.clientY, t0: now(), path: 0, rev: 0, lastDx: 0, lastX: e.clientX, lastY: e.clientY, moved: false, follow: false});
   cv.setPointerCapture(e.pointerId);
   const inCorner = e.clientX < W * .18 && e.clientY < H * .25;
@@ -378,6 +414,7 @@ function onTapRaw(x, y) {
   touch.tapTimer = setTimeout(() => onTap(x, y), 320);
 }
 function onTap(x, y) {
+  if (ring) { stopRing(); setExpr('happy', 1200); caption('Đã tắt chuông', 2000); return; }
   if (wakeIfSleeping()) return;
   if (mood.sulkUntil > now()) { SFX.hmph(); say('Hứ!'); mood.sulkSide *= -1; return; }
   if (inEye(x, y)) {
@@ -453,7 +490,7 @@ const player = (() => {
   };
 })();
 
-const live = {greetOnly: false, pending: null, ws: null, ready: false, connecting: false, stream: null, node: null, src: null, acc: [], accN: 0, level: 0, lastAct: 0, muteUntil: 0, wasSpeaking: false, lastEvent: 0, outText: '', inRate: 48000};
+const live = {log: [], greetOnly: false, pending: null, ws: null, ready: false, connecting: false, stream: null, node: null, src: null, acc: [], accN: 0, level: 0, lastAct: 0, muteUntil: 0, wasSpeaking: false, lastEvent: 0, outText: '', inRate: 48000};
 let pttHeld = false, workletReady = false;
 function micOpen() {
   if (!live.ready) return false;
@@ -482,8 +519,23 @@ const TOOLS = [{functionDeclarations: [
    parameters: {type: 'OBJECT', properties: {action: {type: 'STRING', enum: ['tien', 'lui', 'quay_trai', 'quay_phai', 'dung']}, seconds: {type: 'NUMBER', description: 'Thời gian, tối đa 3 giây'}}, required: ['action']}},
   {name: 'remember_person', description: 'Ghi nhớ khuôn mặt người đang đứng trước camera với tên được giới thiệu, ví dụ khi người dùng nói "đây là bé Na".',
    parameters: {type: 'OBJECT', properties: {name: {type: 'STRING', description: 'Tên để gọi người đó'}}, required: ['name']}},
-  {name: 'who_is_here', description: 'Hỏi xem camera đang thấy những ai (người quen thì có tên).', parameters: {type: 'OBJECT', properties: {}}}
-]}];
+  {name: 'who_is_here', description: 'Hỏi xem camera đang thấy những ai (người quen thì có tên).', parameters: {type: 'OBJECT', properties: {}}},
+  {name: 'set_reminder', description: 'Đặt báo thức, hẹn giờ hoặc nhắc việc. Dùng minutes_from_now cho kiểu "10 phút nữa"; dùng at_time (HH:MM, 24 giờ) và date (YYYY-MM-DD, bỏ trống nếu là lần tới gần nhất) cho giờ cụ thể.',
+   parameters: {type: 'OBJECT', properties: {
+     message: {type: 'STRING', description: 'Nội dung cần nhắc, ví dụ: dậy đi làm, tắt bếp, uống nước'},
+     who: {type: 'STRING', description: 'Nhắc ai (tên như cách Bi gọi), bỏ trống nếu cả nhà'},
+     minutes_from_now: {type: 'NUMBER'}, at_time: {type: 'STRING'}, date: {type: 'STRING'},
+     repeat: {type: 'STRING', enum: ['khong', 'hang_ngay']},
+     kind: {type: 'STRING', enum: ['bao_thuc', 'nhac_viec', 'hen_gio']}}, required: ['message']}},
+  {name: 'list_reminders', description: 'Xem các báo thức, nhắc việc đang đặt.', parameters: {type: 'OBJECT', properties: {}}},
+  {name: 'cancel_reminder', description: 'Hủy báo thức hoặc nhắc việc. Truyền id lấy từ list_reminders, hoặc một từ khóa trong nội dung.',
+   parameters: {type: 'OBJECT', properties: {id: {type: 'STRING'}, keyword: {type: 'STRING'}}}},
+  {name: 'stop_alarm', description: 'Tắt chuông đang kêu. Nếu người dùng muốn ngủ thêm thì gọi set_reminder với minutes_from_now.', parameters: {type: 'OBJECT', properties: {}}},
+  {name: 'recall_memory', description: 'Tìm trong sổ ký ức những chuyện cũ không có sẵn trong lời dặn. Truyền từ khóa và/hoặc tên người.',
+   parameters: {type: 'OBJECT', properties: {keyword: {type: 'STRING'}, who: {type: 'STRING'}}}},
+  {name: 'save_memory', description: 'Ghi ngay một điều cần nhớ lâu dài vào sổ ký ức, khi người dùng dặn "nhớ giúp", "ghi lại".',
+   parameters: {type: 'OBJECT', properties: {who: {type: 'STRING', description: 'Điều này về ai; "chung" nếu cả nhà'}, note: {type: 'STRING'}}, required: ['note']}}
+]}, {googleSearch: {}}];
 function sysPrompt() {
   const d = new Date();
   return `Bạn là ${S.name}, một robot nhỏ sống trong một gia đình Việt Nam. Mặt bạn là màn hình điện thoại với đôi mắt biết biểu cảm, thân bạn là chiếc xe nhỏ hai bánh chạy quanh nhà.
@@ -495,13 +547,17 @@ ${S.camAI && S.cam ? 'Bạn nhìn được qua camera trước mặt: ảnh gử
 Bạn không tự nhận ra ai từ ảnh; tên người do hệ thống nhận diện khuôn mặt của bạn cho biết qua dòng [Sự kiện: ...] hoặc công cụ who_is_here. Khi có người giới thiệu "đây là ..." hoặc dặn bạn nhớ mặt ai thì gọi remember_person với đúng tên đó.
 Khi [Sự kiện] báo người nhà vừa xuất hiện: chào bằng tên rồi hỏi han một câu ngắn, đổi cách hỏi cho đỡ nhàm, ví dụ: đi đâu về thế, chuẩn bị đi đâu thế, hôm nay có gì vui kể Bi nghe với, hay rủ chơi với Bi một chút. Gặp bà thì hỏi thăm, động viên bà. Khi báo người lạ: chào một câu rồi hỏi bạn là ai thế; nếu họ giới thiệu tên và muốn được nhớ thì gọi remember_person. Nếu đang gần dịp đặc biệt (Tết Nguyên đán, Trung thu, Giáng sinh, Tết dương lịch, hoặc sinh nhật ai trong gia đình) thì chúc cho phù hợp.
 Người nhà bạn đã quen mặt: ${Object.keys(people).join(', ') || 'chưa có ai'}.
+Khi được hỏi thông tin đang thay đổi (thời tiết, tin tức, tỉ số và lịch thi đấu bóng đá, bóng chuyền, giá cả, sự kiện gần đây) thì tìm trên Google rồi trả lời ngắn gọn, nói rõ là vừa tra.
+Khi được nhờ báo thức, hẹn giờ, nhắc việc thì gọi set_reminder, rồi nhắc lại giờ và nội dung cho người dùng nghe để chắc chắn. Muốn sửa hay hủy thì dùng list_reminders và cancel_reminder.
+Khi [Sự kiện] báo đến giờ nhắc: gọi đúng người, nói nội dung nhắc thật rõ, vui vẻ; nếu là báo thức thì giục dậy dễ thương và hỏi có cần báo lại không. Khi người đó đã nghe hoặc bảo tắt thì gọi stop_alarm.
+${memoryText()}
 Hôm nay là ${d.toLocaleDateString('vi-VN', {weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric'})}, bây giờ khoảng ${d.getHours()} giờ ${d.getMinutes()} phút.
 ${S.fam ? 'Những điều bạn biết về gia đình:\n' + S.fam : ''}`;
 }
 async function startLive() {
   if (!S.key) { toast('Chưa có khóa API Gemini. Giữ 3 giây ở góc trên bên trái để mở cài đặt.', 5000); setExpr('sad', 1500); return; }
   if (live.connecting || live.ready) return;
-  live.connecting = true; wakeUp();
+  live.connecting = true; cancelIdle(); wakeUp(); live.log = [];
   try {
     const c = ac();
     live.stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1}});
@@ -534,11 +590,13 @@ async function startLive() {
   ws.onmessage = async ev => { let m; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text()); } catch (e) { return; } onServer(m); };
   ws.onerror = () => {};
   ws.onclose = ev => {
+    endSessionMemory();
     const was = live.ready || live.connecting; live.ready = false; live.connecting = false; live.ws = null; cleanupMic(); player.stop();
     if (was && ev.code !== 1000) { toast('Gemini ngắt kết nối' + (ev.reason ? ': ' + ev.reason : ' (mã ' + ev.code + ')'), 7000); setExpr('sad', 1500); }
   };
 }
 function stopLive(msg) {
+  endSessionMemory();
   if (live.ws) { try { live.ws.close(1000); } catch (e) {} }
   live.ready = false; live.connecting = false; cleanupMic(); player.stop();
   if (msg) { setExpr('sleepy', 2500); caption(msg, 3000); }
@@ -576,8 +634,8 @@ function onServer(m) {
   live.lastAct = now();
   if (sc.interrupted) player.stop();
   for (const p of (sc.modelTurn && sc.modelTurn.parts) || []) if (p.inlineData && p.inlineData.data) player.push(p.inlineData.data);
-  if (sc.outputTranscription && sc.outputTranscription.text) { live.outText += sc.outputTranscription.text; caption(live.outText.slice(-140), 5000); }
-  if (sc.inputTranscription && sc.inputTranscription.text) { live.greetOnly = false; live.outText = ''; caption('Bạn: ' + sc.inputTranscription.text, 2500); }
+  if (sc.outputTranscription && sc.outputTranscription.text) { logTurn('Bi', sc.outputTranscription.text); live.outText += sc.outputTranscription.text; caption(live.outText.slice(-140), 5000); }
+  if (sc.inputTranscription && sc.inputTranscription.text) { logTurn('nguoi', sc.inputTranscription.text); live.greetOnly = false; live.outText = ''; caption('Bạn: ' + sc.inputTranscription.text, 2500); }
   if (sc.turnComplete) live.outText = '';
 }
 const EXMAP = {vui: 'happy', yeu_thuong: 'love', buon: 'sad', ngac_nhien: 'surprised', gian: 'angry', buon_ngu: 'sleepy', suy_nghi: 'thinking', xau_ho: 'shy', binh_thuong: 'neutral'};
@@ -599,6 +657,12 @@ async function handleTools(calls) {
         robot.drive(m[0], m[1], a.action === 'dung' ? 0 : ms); }
     }
     else if (c.name === 'remember_person') { setExpr('thinking', 2500); out = await vision.enroll(String(a.name || '').trim()); if (out.result === 'ok') { setExpr('happy', 1500); SFX.purr(); } }
+    else if (c.name === 'set_reminder') { out = addReminder(a); }
+    else if (c.name === 'list_reminders') { out = {result: 'ok', now: fmtWhen(Date.now()), reminders: reminders.map(r => ({id: r.id, khi: fmtWhen(r.at), lap_lai: r.repeat === 'hang_ngay' ? 'hằng ngày' : 'không', nhac_ai: r.who || 'cả nhà', noi_dung: r.msg}))}; }
+    else if (c.name === 'cancel_reminder') { out = cancelReminder(a); }
+    else if (c.name === 'stop_alarm') { stopRing(); out = {result: 'ok'}; }
+    else if (c.name === 'recall_memory') { out = recallMemory(a); }
+    else if (c.name === 'save_memory') { addNotes([{who: a.who || 'chung', note: a.note}]); out = {result: 'ok'}; }
     else if (c.name === 'who_is_here') { out = vision.on ? {result: 'ok', known: [...vision.names], so_nguoi_thay: vision.count} : {result: 'error', note: 'Camera đang tắt'}; }
     else out = {result: 'error', note: 'Không có công cụ này'};
     res.push({id: c.id, name: c.name, response: out});
@@ -615,6 +679,169 @@ function stopPTT() {
   if (live.ready && S.mode === 'ptt') { live.ws.send(JSON.stringify({realtimeInput: {audioStreamEnd: true}})); setExpr('thinking', 1500); }
 }
 
+
+/* ---------------- Sổ ký ức ---------------- */
+let memory = {profiles: {}, notes: [], lastTidy: ''}, memClearArm = false;
+try { memory = Object.assign({profiles: {}, notes: [], lastTidy: ''}, JSON.parse(localStorage.getItem('k40mem') || '{}')); if (!Array.isArray(memory.notes)) memory.notes = []; if (typeof memory.profiles !== 'object' || !memory.profiles) memory.profiles = {}; } catch (e) {}
+const saveMem = () => { try { localStorage.setItem('k40mem', JSON.stringify(memory)); } catch (e) {} };
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const fold = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase();
+const daysAgo = d => Math.round((Date.parse(today()) - Date.parse(d)) / 86400000);
+function addNotes(list) {
+  for (const n of list || []) {
+    const note = String(n.note || '').trim().slice(0, 300); if (!note) continue;
+    memory.notes.push({d: today(), who: String(n.who || 'chung').trim().slice(0, 40) || 'chung', note});
+  }
+  const byWho = {}; memory.notes = memory.notes.reverse().filter(n => (byWho[n.who] = (byWho[n.who] || 0) + 1) <= 150).reverse().slice(-600);
+  saveMem(); renderMem();
+}
+function memoryText() {
+  const names = [...vision.names], whoKeys = names.length ? new Set([...names.map(fold), 'chung']) : null;
+  const relevant = who => !whoKeys || whoKeys.has(fold(who));
+  const prof = Object.entries(memory.profiles).filter(([w]) => relevant(w)).map(([w, p]) => `- ${w}: ${p}`).join('\n');
+  const recent = memory.notes.filter(n => relevant(n.who) && daysAgo(n.d) <= 7).slice(-25).map(n => `- (${n.d}) ${n.who}: ${n.note}`).join('\n');
+  if (!prof && !recent && !memory.notes.length) return '';
+  return (prof ? 'Hồ sơ bạn đã ghi về từng người:\n' + prof + '\n' : '') +
+    (recent ? 'Chuyện mấy ngày gần đây (dùng tự nhiên khi hợp, ví dụ hỏi thăm lại; đừng đọc cả danh sách):\n' + recent + '\n' : '') +
+    'Sổ ký ức còn nhiều chuyện cũ hơn: khi cần nhớ lại điều gì không có ở trên (ai đó hỏi "còn nhớ không", hoặc nhắc tới chuyện cũ) thì gọi recall_memory.';
+}
+function profileLine(name) { const k = Object.keys(memory.profiles).find(w => fold(w) === fold(name)); return k ? `${k}: ${memory.profiles[k]}` : ''; }
+function recallMemory(a) {
+  const words = fold(a.keyword).split(/\s+/).filter(w => w.length > 1), who = fold(a.who);
+  const hits = memory.notes.filter(n => (!who || fold(n.who).includes(who)) && (!words.length || words.some(w => fold(n.note).includes(w))));
+  const profs = Object.entries(memory.profiles).filter(([w, p]) => (!who || fold(w).includes(who)) && (!words.length || words.some(x => fold(p).includes(x))));
+  return {result: 'ok', ho_so: Object.fromEntries(profs), ghi_chu: hits.slice(-15).map(n => `(${n.d}) ${n.who}: ${n.note}`), tong_so_tim_thay: hits.length};
+}
+async function geminiJSON(prompt) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(S.memModel.replace(/^models\//, ''))}:generateContent?key=${encodeURIComponent(S.key)}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({contents: [{role: 'user', parts: [{text: prompt}]}], generationConfig: {responseMimeType: 'application/json', temperature: .2}})
+  });
+  const j = await r.json(); if (j.error) throw new Error(j.error.message || 'lỗi Gemini');
+  return JSON.parse(j?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '{}');
+}
+let tidying = false;
+async function tidyMemory(force) {
+  if (tidying || !S.mem || !S.key || live.ready || live.connecting) return;
+  if (!force && (!memory.notes.length || (memory.lastTidy && daysAgo(memory.lastTidy) < 7))) return;
+  tidying = true;
+  try {
+    const prompt = `Bạn giúp robot ${S.name} dọn sổ ký ức về một gia đình. Hôm nay là ${today()}.
+Hồ sơ hiện có (mỗi người một đoạn ngắn): ${JSON.stringify(memory.profiles)}
+Các ghi chú theo ngày: ${JSON.stringify(memory.notes)}
+Thông tin gia đình do chủ nhà nhập: ${S.fam.slice(0, 1500)}
+Việc cần làm:
+1. Viết lại hồ sơ cho từng người (và "chung" cho cả nhà): gộp những điều lâu dài như tính cách, sở thích, thói quen, chuyện sức khỏe họ tự kể, mối quan tâm. Mỗi hồ sơ tối đa 5 câu ngắn, giữ điều quan trọng nhất. Không chép lại thông tin đã có sẵn trong phần chủ nhà nhập.
+2. Giữ lại trong danh sách ghi chú những chuyện còn đang diễn ra hoặc sắp tới, kèm đúng ngày ghi gốc. Chuyện đã qua thì: nếu có kết quả thì đưa kết quả vào hồ sơ, không thì bỏ. Bỏ chuyện vặt và các ghi chú trùng nhau.
+Trả về JSON đúng dạng {"profiles":{"tên":"..."},"notes":[{"d":"YYYY-MM-DD","who":"tên hoặc chung","note":"..."}]}.`;
+    const out = await geminiJSON(prompt);
+    if (out && typeof out.profiles === 'object' && Array.isArray(out.notes)) {
+      try { localStorage.setItem('k40mem_bak', JSON.stringify(memory)); } catch (e) {}
+      memory.profiles = {}; for (const [w, p] of Object.entries(out.profiles)) if (String(p).trim()) memory.profiles[String(w).slice(0, 40)] = String(p).trim().slice(0, 600);
+      memory.notes = out.notes.filter(n => n && n.note).map(n => ({d: /^\d{4}-\d{2}-\d{2}$/.test(n.d) ? n.d : today(), who: String(n.who || 'chung').slice(0, 40), note: String(n.note).slice(0, 300)}));
+      memory.lastTidy = today(); saveMem(); renderMem();
+      if (force) toast('Đã dọn sổ ký ức');
+    }
+  } catch (e) { if (force) toast('Chưa dọn được sổ: ' + e.message, 5000); }
+  tidying = false;
+}
+setTimeout(() => tidyMemory(false), 60000);
+setInterval(() => tidyMemory(false), 3600000);
+function logTurn(role, text) {
+  const last = live.log[live.log.length - 1];
+  if (last && last.role === role) last.text += text;
+  else live.log.push({role, text, who: role === 'nguoi' ? [...vision.names].join(', ') : ''});
+}
+function endSessionMemory() {
+  const log = live.log; live.log = [];
+  if (!S.mem || !S.key) return;
+  const userTurns = log.filter(l => l.role === 'nguoi' && l.text.trim().length > 3);
+  if (userTurns.length < 2) return;
+  const convo = log.map(l => (l.role === 'Bi' ? 'Bi: ' : `Người nói${l.who ? ' (có thể là ' + l.who + ')' : ''}: `) + l.text.trim()).join('\n').slice(-8000);
+  const prompt = `Bạn giúp robot ${S.name} ghi sổ ký ức về gia đình. Đọc đoạn hội thoại dưới đây và chỉ ghi những điều đáng nhớ lâu dài hoặc nên hỏi thăm lại sau: kế hoạch, sự kiện sắp tới, chuyện vui buồn quan trọng, sở thích mới, lời dặn. Bỏ qua chuyện vặt, câu chào hỏi, câu hỏi kiến thức. Mỗi ghi chú một câu ngắn, ghi rõ thời điểm nếu có (hôm nay là ${today()}). Nếu không có gì đáng nhớ thì trả về danh sách rỗng.
+Người nhà: ${Object.keys(people).join(', ') || 'chưa rõ'}. Thông tin gia đình: ${S.fam.slice(0, 1500)}
+Trả về JSON đúng dạng {"notes":[{"who":"tên người hoặc chung","note":"..."}]}.
+
+Hội thoại:
+${convo}`;
+  geminiJSON(prompt).then(data => { if (data.notes && data.notes.length) { addNotes(data.notes); caption('Bi đã ghi nhớ ' + data.notes.length + ' điều', 2500); } }).catch(() => {}).finally(() => setTimeout(() => tidyMemory(false), 5000));
+}
+function renderMem() {
+  const el = $('#mList'); if (!el) return; el.textContent = '';
+  const row = (text, del) => { const r = document.createElement('div'); r.className = 'pp'; const sp = document.createElement('span'); sp.textContent = text; const b = document.createElement('button'); b.textContent = 'Xóa'; b.onclick = del; r.append(sp, b); el.appendChild(r); };
+  const profs = Object.entries(memory.profiles);
+  if (!profs.length && !memory.notes.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = 'Sổ đang trống.'; el.appendChild(p); return; }
+  const info = document.createElement('p'); info.className = 'note';
+  info.textContent = `${profs.length} hồ sơ · ${memory.notes.length} ghi chú · dọn sổ lần cuối: ${memory.lastTidy || 'chưa'}`; el.appendChild(info);
+  for (const [w, p] of profs) row(`Hồ sơ ${w}: ${p}`, () => { delete memory.profiles[w]; saveMem(); renderMem(); });
+  memory.notes.slice().reverse().forEach((n, i) => row(`${n.d} · ${n.who}: ${n.note}`, () => { memory.notes.splice(memory.notes.length - 1 - i, 1); saveMem(); renderMem(); }));
+}
+
+/* ---------------- Báo thức, hẹn giờ, nhắc việc ---------------- */
+let reminders = [];
+try { reminders = JSON.parse(localStorage.getItem('k40rem') || '[]'); } catch (e) {}
+const saveRem = () => { try { localStorage.setItem('k40rem', JSON.stringify(reminders)); } catch (e) {} renderRem(); };
+function fmtWhen(ms) { const d = new Date(ms); return d.toLocaleString('vi-VN', {weekday: 'long', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric'}); }
+function addReminder(a) {
+  const msg = String(a.message || '').trim(); if (!msg) return {result: 'error', note: 'Thiếu nội dung nhắc'};
+  let at;
+  if (a.minutes_from_now != null && +a.minutes_from_now > 0) at = Date.now() + Math.round(+a.minutes_from_now * 60000);
+  else if (a.at_time && /^\d{1,2}:\d{2}$/.test(String(a.at_time).trim())) {
+    const [h, m] = String(a.at_time).trim().split(':').map(Number); const d = new Date();
+    if (a.date && /^\d{4}-\d{2}-\d{2}$/.test(a.date)) { const [Y, M, D] = a.date.split('-').map(Number); d.setFullYear(Y, M - 1, D); }
+    d.setHours(h, m, 0, 0); if (!a.date && d.getTime() <= Date.now() + 5000) d.setDate(d.getDate() + 1);
+    at = d.getTime();
+  } else return {result: 'error', note: 'Chưa rõ thời gian, hãy hỏi lại người dùng'};
+  if (at <= Date.now()) return {result: 'error', note: 'Thời điểm này đã qua'};
+  const r = {id: String(Date.now() % 1e7), at, repeat: a.repeat === 'hang_ngay' ? 'hang_ngay' : 'khong', who: String(a.who || '').trim(), msg, kind: a.kind || 'nhac_viec'};
+  reminders.push(r); reminders.sort((x, y) => x.at - y.at); saveRem();
+  return {result: 'ok', id: r.id, se_nhac_luc: fmtWhen(at), lap_lai: r.repeat === 'hang_ngay' ? 'hằng ngày' : 'không'};
+}
+function cancelReminder(a) {
+  const k = String(a.keyword || '').toLowerCase(); const before = reminders.length;
+  reminders = reminders.filter(r => !(a.id && r.id === String(a.id)) && !(k && r.msg.toLowerCase().includes(k)));
+  saveRem(); return before === reminders.length ? {result: 'error', note: 'Không tìm thấy nhắc việc đó'} : {result: 'ok', da_huy: before - reminders.length};
+}
+let ring = null;
+function startRing(alarm) {
+  stopRing(); let n = 0;
+  const beep = () => { [0, .18, .36].forEach(d => chirp(alarm ? 880 : 1046, alarm ? 1320 : 1568, .14, 'square', .09, d)); if (++n > (alarm ? 40 : 4)) stopRing(); };
+  beep(); ring = setInterval(beep, 1500);
+}
+function stopRing() { if (ring) { clearInterval(ring); ring = null; } }
+function fireReminder(r) {
+  state.lastTouch = now(); if (state.sleep) wakeIfSleeping();
+  setExpr('surprised', 2500); burst('bang', 1);
+  const alarm = r.kind === 'bao_thuc'; startRing(alarm);
+  const line = (r.who ? r.who + ' ơi, ' : 'Cả nhà ơi, ') + r.msg + '!';
+  caption('⏰ ' + line, 8000);
+  const ev = `Đến giờ nhắc (${alarm ? 'báo thức' : 'nhắc việc'}): ${r.who ? 'nhắc ' + r.who : 'nhắc cả nhà'} việc "${r.msg}".`;
+  setTimeout(() => {
+    if (live.ready) { if (!alarm) stopRing(); sendEvent(ev, true); }
+    else if (S.key) { if (!alarm) stopRing(); live.pending = ev; live.greetOnly = true; startLive(); }
+    else { say(line); }
+  }, alarm ? 3000 : 1500);
+}
+setInterval(() => {
+  const t = Date.now(); let changed = false;
+  for (const r of reminders.slice()) {
+    if (r.at > t) continue;
+    if (t - r.at < 10 * 60000) fireReminder(r);
+    if (r.repeat === 'hang_ngay') { while (r.at <= t) r.at += 86400000; } else reminders = reminders.filter(x => x !== r);
+    changed = true;
+  }
+  if (changed) { reminders.sort((x, y) => x.at - y.at); saveRem(); }
+}, 1000);
+function renderRem() {
+  const el = $('#rList'); if (!el) return; el.textContent = '';
+  if (!reminders.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = 'Chưa có báo thức hay nhắc việc nào.'; el.appendChild(p); return; }
+  for (const r of reminders) {
+    const row = document.createElement('div'); row.className = 'pp';
+    const sp = document.createElement('span'); sp.textContent = `${fmtWhen(r.at)}${r.repeat === 'hang_ngay' ? ' · hằng ngày' : ''} · ${r.who || 'cả nhà'}: ${r.msg}`;
+    const b = document.createElement('button'); b.textContent = 'Xóa'; b.onclick = () => { reminders = reminders.filter(x => x !== r); saveRem(); };
+    row.append(sp, b); el.appendChild(row);
+  }
+}
 
 /* ---------------- Camera: dò mặt, nhận người quen ---------------- */
 let people = {};
@@ -698,15 +925,20 @@ const vision = {
     if (!this.present && !wantRec && !this.enrolling && !this.moved() && t - this.lastDet < 5000) { vStat(`Camera: đang bật (${this.engine}) · không có ai`); return; }
     this.lastDet = t;
     let boxes;
-    if (wantRec) { this.lastRec = t; const dets = await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors(); boxes = dets.map(d => ({box: d.detection.box, desc: d.descriptor})); }
-    else if (this.mp) boxes = this.detectMP(v);
-    else boxes = (await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: this.present || state.sleep ? 224 : 160, scoreThreshold: .5}))).map(d => ({box: d.box, desc: null}));
+    boxes = await this.findBoxes(v, this.present || state.sleep || wantRec ? 224 : 160);
+    if (wantRec && boxes.length) {
+      this.lastRec = t; if (!this.enrolling) this.showOv('Bi đang nhìn xem ai đây…', 4000);
+      const big = boxes.slice().sort((a, c) => c.box.width - a.box.width).slice(0, 3);
+      for (const b of big) { try { b.desc = await this.describe(v, b.box); } catch (e) {} }
+    }
+    this.drawOv(boxes);
     this.count = boxes.length;
     if (this.count > this.lastCount) this.recNeed = 3;
     this.lastCount = this.count;
     if (wantRec) {
       for (const b of boxes) { const n = matchFace(b.desc); if (n) this.names.add(n); }
       this.recNeed = this.names.size >= boxes.length ? 0 : this.recNeed - 1;
+      if (this.recNeed <= 0 && !this.enrolling) { const ns2 = [...this.names]; this.showOv(ns2.length ? 'Chào ' + ns2.join(', ') + '!' : 'Bi chưa quen bạn này', 1500); }
     }
     if (boxes.length) {
       const b = boxes.reduce((a, c) => c.box.width * c.box.height > a.box.width * a.box.height ? c : a).box;
@@ -718,23 +950,58 @@ const vision = {
       this.follow(t);
     } else if (this.present && t - this.lastSeen > 3000) { this.present = false; this.absentSince = t; this.names.clear(); this.lastNames = ''; this.lastCount = 0; this.recNeed = 0; }
     const ns = [...this.names].sort().join(', ');
-    if (ns !== this.lastNames) { this.lastNames = ns; if (ns && live.ready) sendEvent('Bạn đang nhìn thấy ' + ns, true); }
+    if (ns !== this.lastNames) { this.lastNames = ns; if (ns && live.ready) { const pl = [...this.names].map(profileLine).filter(Boolean).join(' | '); sendEvent('Bạn đang nhìn thấy ' + ns + (pl ? '. Hồ sơ: ' + pl : ''), true); } }
     vStat(`Camera: đang bật (${this.engine}) · thấy ${this.count} người${ns ? ' · nhận ra: ' + ns : ''}`);
+  },
+  camSide() {
+    if (H > W * 1.1) return 'top';
+    const a = screen.orientation && typeof screen.orientation.angle === 'number' ? screen.orientation.angle : (window.orientation || 0);
+    return a === 90 ? 'left' : 'right';
+  },
+  showOv(text, ms) {
+    if (!S.camOv || !this.stream) return;
+    const ov = $('#camOv'), ar = $('#ovArrow'), side = this.camSide();
+    if ($('#ovv').srcObject !== this.stream) { $('#ovv').srcObject = this.stream; $('#ovv').play().catch(() => {}); }
+    ov.className = 'on ' + side; $('#ovt').textContent = text;
+    if (side !== 'top') { ar.className = 'on'; ar.style.left = side === 'left' ? '1vw' : ''; ar.style.right = side === 'right' ? '1vw' : ''; ar.style.top = '12vh';
+      ar.textContent = side === 'left' ? '◀ camera ở đây' : 'camera ở đây ▶'; } else ar.className = '';
+    clearTimeout(this.ovT); if (ms) this.ovT = setTimeout(() => this.hideOv(), ms);
+  },
+  hideOv() { $('#camOv').className = ''; $('#ovArrow').className = ''; const c = $('#ovc'); c.getContext('2d').clearRect(0, 0, c.width, c.height); },
+  drawOv(boxes) {
+    if (!$('#camOv').classList.contains('on')) return;
+    const v = this.video, c = $('#ovc'); c.width = v.videoWidth; c.height = v.videoHeight;
+    const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.lineWidth = Math.max(2, c.width / 160); g.strokeStyle = '#5ef2a0';
+    for (const b of boxes) g.strokeRect(b.box.x, b.box.y, b.box.width, b.box.height);
+  },
+  async describe(v, box) {
+    const side = Math.max(box.width, box.height) * 1.7, cxp = box.x + box.width / 2, cyp = box.y + box.height / 2;
+    const c = this.cropC || (this.cropC = document.createElement('canvas')); c.width = c.height = 256;
+    c.getContext('2d').drawImage(v, cxp - side / 2, cyp - side / 2, side, side, 0, 0, 256, 256);
+    await new Promise(r => setTimeout(r, 0));
+    const d = await faceapi.detectSingleFace(c, new faceapi.TinyFaceDetectorOptions({inputSize: 160, scoreThreshold: .35})).withFaceLandmarks(true).withFaceDescriptor();
+    await new Promise(r => setTimeout(r, 0));
+    if (!d) throw new Error('no face');
+    return d.descriptor;
+  },
+  async findBoxes(v, size) {
+    if (this.mp) return this.detectMP(v);
+    return (await faceapi.detectAllFaces(v, new faceapi.TinyFaceDetectorOptions({inputSize: size, scoreThreshold: .5}))).map(d => ({box: d.box, desc: null}));
   },
   recReady() { return !!this.recP && faceapi.nets.faceRecognitionNet.isLoaded && Object.keys(people).length > 0; },
   arrive(tries = 0) {
     if (!this.present && now() - this.lastSeen > 3000) return;
     if (Object.keys(people).length && (!this.recReady() || this.recNeed > 0) && tries < 14) { setTimeout(() => this.arrive(tries + 1), 700); return; }
     if (S.act !== 'always' && !live.ready) return;
-    state.lastTouch = now(); if (state.sleep) wakeIfSleeping();
+    cancelIdle(); state.lastTouch = now(); if (state.sleep) wakeIfSleeping();
     const sl = slot(), names = [...this.names];
     if (!sl) { setExpr('happy', 1500); return; }
     const fresh = names.filter(n => greetLog[n] !== sl.key);
     const stranger = !names.length && greetLog['?'] !== sl.key;
     if (!fresh.length && !stranger) { setExpr('happy', 1500); return; }
-    (fresh.length ? fresh : ['?']).forEach(n => greetLog[n] = sl.key); saveGreet();
+    (fresh.length ? fresh : ['?']).forEach(n => greetLog[n] = sl.key); if (fresh.length && sl.key.endsWith('s') && S.city && S.key) greetLog['#weather'] = sl.key; saveGreet();
     const ev = fresh.length
-      ? `${fresh.join(' và ')} vừa xuất hiện trước mặt bạn, lần đầu gặp trong ${sl.name} nay. Hãy chào và hỏi han thật ngắn.`
+      ? `${fresh.join(' và ')} vừa xuất hiện trước mặt bạn, lần đầu gặp trong ${sl.name} nay. Hãy chào và hỏi han thật ngắn.` + (sl.key.endsWith('s') && !weatherDone() && S.city ? ` Đây là lời chào ngày mới đầu tiên hôm nay: dùng Google tra nhanh thời tiết hôm nay ở ${S.city} rồi nói thêm đúng 1 câu về thời tiết (ví dụ nhắc mang áo mưa, mặc ấm).` : '')
       : `Có một người lạ vừa xuất hiện trước mặt bạn. Chào một câu rồi hỏi họ là ai.`;
     setExpr(fresh.length ? 'happy' : 'surprised', 1800); if (fresh.length) burst('heart', 2); SFX.wake();
     if (live.ready) { sendEvent(ev, true); return; }
@@ -759,15 +1026,18 @@ const vision = {
     if (!this.on) await this.start();
     if (!this.on) return {result: 'error', note: 'Không mở được camera'};
     try { await this.loadRec(); } catch (e) { return {result: 'error', note: 'Không tải được bộ nhận diện'}; }
-    this.enrolling = true; this.setRes(true); await new Promise(r => setTimeout(r, 400));
+    this.enrolling = true; this.setRes(true);
+    this.showOv(`Làm quen ${name}: nhìn thẳng vào camera nhé`); await new Promise(r => setTimeout(r, 900));
     const got = []; const t0 = now();
-    while (now() - t0 < 6000 && got.length < 5) {
-      const d = await faceapi.detectAllFaces(this.video, new faceapi.TinyFaceDetectorOptions({inputSize: 320, scoreThreshold: .5})).withFaceLandmarks(true).withFaceDescriptors();
-      if (d.length === 1) got.push(Array.from(d[0].descriptor, x => Math.round(x * 1000) / 1000));
-      else if (d.length > 1) { this.enrolling = false; return {result: 'error', note: 'Đang thấy nhiều người, cần đứng một mình trước camera'}; }
-      await new Promise(r => setTimeout(r, 200));
+    while (now() - t0 < 8000 && got.length < 5) {
+      const bx = await this.findBoxes(this.video, 320); this.drawOv(bx);
+      if (bx.length === 1) { try { got.push(Array.from(await this.describe(this.video, bx[0].box), x => Math.round(x * 1000) / 1000)); } catch (e) {} this.showOv(`Làm quen ${name}: đã chụp ${got.length}/5`); }
+      else if (bx.length > 1) { this.showOv('Chỉ một người đứng trước camera thôi nhé'); }
+      else this.showOv(`Làm quen ${name}: chưa thấy mặt, nhìn vào camera nhé`);
+      await new Promise(r => setTimeout(r, 250));
     }
     this.enrolling = false;
+    this.showOv(got.length >= 2 ? `Bi nhớ mặt ${name} rồi!` : 'Chưa chụp được, thử lại ở chỗ sáng hơn nhé', 2000);
     if (got.length < 2) return {result: 'error', note: 'Không thấy rõ mặt ai trước camera'};
     people[name] = (people[name] || []).concat(got).slice(-12); savePeople(); renderPeople();
     this.names.add(name); const sl = slot(); if (sl) { greetLog[name] = sl.key; saveGreet(); } this.recNeed = 0;
@@ -813,7 +1083,7 @@ function renderPeople() {
 /* ---------------- Thân xe qua Bluetooth (ESP32, Nordic UART) ---------------- */
 const UART = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e', TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 const robot = {
-  ok: false, rx: null, q: Promise.resolve(), tel: {}, lastSend: 0, headAngle: 0, headBack: 0,
+  ok: false, rx: null, q: Promise.resolve(), tel: {}, lastPir: 0, lastSend: 0, headAngle: 0, headBack: 0,
   async connect() {
     if (!navigator.bluetooth) { toast('Trình duyệt này không hỗ trợ Bluetooth web. Dùng Chrome trên Android.'); return; }
     try {
@@ -824,7 +1094,7 @@ const robot = {
       const tx = await srv.getCharacteristic(TX); await tx.startNotifications();
       let line = '';
       tx.addEventListener('characteristicvaluechanged', e => { line += new TextDecoder().decode(e.target.value); let i; while ((i = line.indexOf('\n')) >= 0) { this.onLine(line.slice(0, i).trim()); line = line.slice(i + 1); } });
-      this.ok = true; showTel(); toast('Đã kết nối thân xe'); setExpr('happy', 1500); SFX.wake();
+      this.ok = true; showTel(); chgSync(true); toast('Đã kết nối thân xe'); setExpr('happy', 1500); SFX.wake();
     } catch (e) { if (e.name !== 'NotFoundError') toast('Không kết nối được: ' + e.message); }
   },
   send(s) { if (!this.ok) return; this.lastSend = now(); const d = new TextEncoder().encode(s + '\n'); this.q = this.q.then(() => this.rx.writeValueWithoutResponse(d)).catch(() => {}); },
@@ -833,6 +1103,7 @@ const robot = {
   nod() { [12, -4, 10, 0].forEach((a, i) => setTimeout(() => this.head(a), i * 220)); },
   onLine(l) {
     const p = l.split(',');
+    if (p[0] === 'M' && p[1] === '1') { robot.lastPir = now(); pirWake(); }
     if (p[0] === 'S') {
       this.tel = {sonar: +p[1], cliffL: +p[2], cliffR: +p[3], mv: +p[4]}; showTel();
       if ((this.tel.cliffL || this.tel.cliffR) && expr !== 'surprised') { setExpr('surprised', 1500); burst('bang', 1); say('Ối, mép cầu thang!'); }
@@ -843,6 +1114,7 @@ function robotTick(t) { if (robot.ok && t - robot.lastSend > 1000) robot.send('P
 function showTel() {
   const el = $('#tel'), T2 = robot.tel;
   el.textContent = !robot.ok ? 'Thân xe: chưa kết nối' : `Thân xe: đã kết nối · vật cản ${T2.sonar ?? '–'} cm · pin ${T2.mv ? (T2.mv / 1000).toFixed(2) + ' V' : '–'}`;
+  el.textContent += ' · ' + chgText();
 }
 
 /* ---------------- Bảng cài đặt ---------------- */
@@ -850,7 +1122,7 @@ function openSettings() {
   stopPTTIfAny();
   $('#sName').value = S.name; $('#sKey').value = S.key; $('#sModel').value = S.model; $('#sVoice').value = S.voice; $('#sMode').value = S.mode;
   $('#sBarge').checked = S.barge; $('#sCap').checked = S.cap; $('#sTouchAI').checked = S.touchAI; $('#sFam').value = S.fam;
-  $('#sCam').checked = S.cam; $('#sAct').value = S.act; $('#sMouth').checked = S.mouth; $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; renderPeople();
+  $('#sCam').checked = S.cam; $('#sAct').value = S.act; $('#sMouth').checked = S.mouth; $('#sMem').checked = S.mem; $('#sCamOv').checked = S.camOv; $('#sMemModel').value = S.memModel; renderMem(); renderRem(); $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; $('#sIdle').checked = S.idle; $('#sInvite').checked = S.invite; $('#sCity').value = S.city; $('#sAutoChg').checked = S.autoChg; $('#sChgLo').value = S.chgLo; $('#sChgHi').value = S.chgHi; renderPeople();
   if (S.cam && !vision.on) vision.start();
   showTel(); $('#set').classList.add('on');
 }
@@ -858,12 +1130,16 @@ function stopPTTIfAny() { if (touch.ptt) stopPTT(); }
 function readSettings() {
   S.name = $('#sName').value.trim() || 'Bi'; S.key = $('#sKey').value.trim(); S.model = $('#sModel').value.trim() || DEF.model;
   S.voice = $('#sVoice').value; S.mode = $('#sMode').value; S.barge = $('#sBarge').checked; S.cap = $('#sCap').checked; S.touchAI = $('#sTouchAI').checked; S.fam = $('#sFam').value.trim();
-  S.cam = $('#sCam').checked; S.act = $('#sAct').value; S.mouth = $('#sMouth').checked; S.camAI = $('#sCamAI').checked; S.follow = $('#sFollow').checked;
+  S.cam = $('#sCam').checked; S.act = $('#sAct').value; S.mouth = $('#sMouth').checked; S.mem = $('#sMem').checked; S.camOv = $('#sCamOv').checked; S.memModel = $('#sMemModel').value.trim() || DEF.memModel; S.camAI = $('#sCamAI').checked; S.follow = $('#sFollow').checked;
+  S.idle = $('#sIdle').checked; S.invite = $('#sInvite').checked; S.city = $('#sCity').value.trim(); S.autoChg = $('#sAutoChg').checked;
+  S.chgLo = clamp(+$('#sChgLo').value || 40, 20, 70); S.chgHi = clamp(+$('#sChgHi').value || 80, S.chgLo + 10, 100); chgSync(true);
   syncCam();
   saveS();
 }
 $('#bSave').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); if (live.ready) { stopLive(); caption('Đã lưu. Chạm 2 lần để nói chuyện với cài đặt mới', 3500); } });
 $('#bBle').addEventListener('click', () => robot.connect());
+$('#bMemTidy').addEventListener('click', () => { readSettings(); toast('Đang dọn sổ…'); tidyMemory(true); });
+$('#bMemClear').addEventListener('click', () => { if (!memClearArm) { memClearArm = true; $('#bMemClear').textContent = 'Bấm lần nữa để xóa hết'; setTimeout(() => { memClearArm = false; $('#bMemClear').textContent = 'Xóa hết sổ ký ức'; }, 4000); return; } memory.notes = []; memory.profiles = {}; memory.lastTidy = ''; saveMem(); renderMem(); memClearArm = false; $('#bMemClear').textContent = 'Xóa hết sổ ký ức'; toast('Đã xóa sổ ký ức'); });
 $('#sCam').addEventListener('change', e => { if (e.target.checked) vision.start(); else vision.stop(); });
 $('#bEnroll').addEventListener('click', async () => {
   const n = $('#pName').value.trim(); if (!n) { toast('Nhập tên trước đã'); return; }
@@ -873,7 +1149,141 @@ $('#bEnroll').addEventListener('click', async () => {
 });
 $('#bTest').addEventListener('click', () => { readSettings(); $('#set').classList.remove('on'); stopLive(); setTimeout(startLive, 300); });
 
-window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people, state};
+/* ---------------- Lúc rảnh: tự chơi, theo giờ, rủ chơi ---------------- */
+const hourNow = () => { const d = new Date(); return d.getHours() + d.getMinutes() / 60; };
+function isNight() { const h = hourNow(); return h >= 23 || h < 5; }
+function tod() {
+  const h = hourNow();
+  if (!S.idle) return {sleepyAfter: 60000, sleepAfter: 120000};
+  if (h >= 23 || h < 5) return {sleepyAfter: 5000, sleepAfter: 30000};
+  if (h >= 22) return {sleepyAfter: 15000, sleepAfter: 60000};
+  if (h >= 11.75 && h < 13.5) return {sleepyAfter: 20000, sleepAfter: 90000};
+  return {sleepyAfter: 60000, sleepAfter: 120000};
+}
+const idleAct = {busy: false, next: now() + rand(40000, 90000), timers: [], fly: null, look: null, said: {}, lastInviteCheck: 0};
+function later(ms, fn) { idleAct.timers.push(setTimeout(fn, ms)); }
+function cancelIdle() { idleAct.timers.forEach(clearTimeout); idleAct.timers = []; idleAct.fly = null; idleAct.look = null; idleAct.busy = false; }
+function finish(ms) { later(ms, () => { idleAct.busy = false; idleAct.look = null; }); }
+function seen() { return vision.present; }
+function mutter(line) { if (!seen()) return; caption(line, 2500); say(line); }
+function lookAt(gx, gy, ms) { idleAct.look = {gx, gy, until: now() + ms}; }
+function flyPos(t) { const f = idleAct.fly, a = (t - f.t0) / 1000 * 1.5 + f.seed; return {gx: clamp(Math.sin(a * 1.3) * .8 + Math.sin(a * 3.7) * .15, -1, 1), gy: clamp(Math.sin(a * 1.9 + 1) * .55, -.8, .8)}; }
+function drawFly(g, t) {
+  if (!idleAct.fly) return; const f = flyPos(t), x = W / 2 + f.gx * W * .4, y = g.cy + f.gy * H * .4, s = Math.max(7, g.ew * .08);
+  cx.fillStyle = '#c9d6df'; cx.globalAlpha = .55; const w = Math.sin(t / 18) > 0 ? 1 : .5;
+  cx.beginPath(); cx.ellipse(x - s * .7, y - s * .8, s * .9, s * .45 * w, -.5, 0, Math.PI * 2); cx.ellipse(x + s * .7, y - s * .8, s * .9, s * .45 * w, .5, 0, Math.PI * 2); cx.fill();
+  cx.globalAlpha = 1; cx.fillStyle = '#7d8a94'; cx.beginPath(); cx.arc(x, y, s * .75, 0, Math.PI * 2); cx.fill();
+}
+const TRICKS = {
+  yawn() { setExpr('yawn', 1700); SFX.yawn(); lookAt(0, -.2, 1700); later(1750, () => setExpr('sleepy', 1800)); finish(3600); },
+  look() {
+    const side = Math.random() < .5 ? -1 : 1;
+    lookAt(side * .95, rand(-.3, .2), 1300); later(1400, () => lookAt(-side * .95, rand(-.3, .2), 1300));
+    later(2800, () => { lookAt(0, 0, 900); burst('q', 1); }); later(3200, () => { if (!seen()) return; mutter(pick(['Mọi người đâu hết rồi nhỉ?', 'Hình như có tiếng gì đó…', 'Nhà mình yên tĩnh ghê'])); });
+    finish(4200);
+  },
+  fly() {
+    idleAct.fly = {t0: now(), seed: rand(0, 6)};
+    for (let i = 0; i < 12; i++) later(i * 450, () => chirp(rand(180, 230), rand(200, 260), .35, 'sawtooth', .025));
+    later(2500, () => setExpr('thinking', 2500));
+    later(5600, () => { idleAct.fly = null; setExpr('surprised', 700); burst('bang', 1); SFX.boop(); });
+    later(6400, () => { setExpr('shy', 1800); mutter(pick(['Hụt mất rồi!', 'Bay đâu mất rồi ta?', 'Hihi, trượt rồi'])); });
+    finish(8200);
+  },
+  hum() {
+    const mel = pick([[523, 587, 659, 523, 659, 784], [659, 587, 523, 587, 659, 659, 659], [784, 659, 698, 587, 523]]);
+    setExpr('happy', mel.length * 330 + 600);
+    mel.forEach((f, i) => later(i * 330, () => { chirp(f, f * 1.01, .26, 'sine', .1); if (i % 2 === 0) burst('note', 1); lookAt(i % 2 ? .25 : -.25, -.15, 400); }));
+    finish(mel.length * 330 + 700);
+  },
+  bubbles() {
+    setExpr('happy', 1500); chirp(300, 500, .4, 'sine', .06);
+    for (let i = 0; i < 6; i++) particles.push({kind: 'bubble', x: rand(-1, 1), y: 0, t: 0, life: rand(3, 4.5), side: 1, d: i * .35});
+    for (let i = 0; i < 6; i++) later(3200 + i * 380, () => chirp(1500, 2400, .05, 'sine', .07));
+    later(3300, () => { setExpr('happy', 2000); SFX.giggle(); });
+    finish(5800);
+  },
+  sneeze() {
+    setExpr('thinking', 900); chirp(500, 700, .5, 'sine', .07);
+    later(700, () => { setExpr('yawn', 500); chirp(600, 900, .4, 'triangle', .08); });
+    later(1300, () => { setExpr('wince', 500); burst('bang', 1); chirp(1400, 250, .25, 'square', .08); if (seen()) say('Hắt xì!'); });
+    later(2000, () => { setExpr('shy', 1500); mutter(pick(['Ai nhắc Bi đấy nhỉ?', 'Hì, xin lỗi nha'])); });
+    finish(3700);
+  },
+  mumble() {
+    if (!seen()) return TRICKS.look();
+    setExpr('thinking', 1600); later(500, () => mutter(pick(['Chán quá đi…', 'Không ai chơi với Bi à?', 'Bi đang nghĩ xem hôm nay làm gì vui…', 'Hôm nay trời thế nào nhỉ?']))); finish(2600);
+  },
+  ngong() { const side = Math.random() < .5 ? -1 : 1; setExpr('sad', 3000); lookAt(side * .95, 0, 3000); later(3100, () => { burst('q', 1); mutter('Sao mọi người chưa về nhỉ?'); }); finish(4000); }
+};
+function runTrick(name) {
+  cancelIdle(); idleAct.busy = true;
+  if (!name) {
+    const h = hourNow(), w = {yawn: 2, look: 3, fly: 2, hum: 2, bubbles: 2, sneeze: 1, mumble: seen() ? 1.5 : 0, ngong: !seen() && h >= 17 && h < 19.5 ? 3 : 0};
+    if (h >= 11.75 && h < 13.5 || h >= 21.5) w.yawn = 5;
+    let r = Math.random() * Object.values(w).reduce((a, b) => a + b, 0);
+    for (const [k, v] of Object.entries(w)) { if ((r -= v) <= 0) { name = k; break; } }
+  }
+  (TRICKS[name] || TRICKS.look)();
+}
+function sayOnce(key, line) {
+  const d = new Date().toISOString().slice(0, 10) + key;
+  if (idleAct.said[key] === d) return false;
+  idleAct.said[key] = d; setExpr('sad', 1500); caption(line, 3500); say(line); return true;
+}
+function idleTick(t) {
+  if (!S.idle || state.sleep || live.ready || live.connecting || ring || touch.down || vision.enrolling || mood.sulkUntil > t || isNight()) return;
+  if (t - idleAct.lastInviteCheck > 10000) { idleAct.lastInviteCheck = t; tryInvite(); if (live.connecting) return; }
+  if (idleAct.busy || t - state.lastTouch < 15000) return;
+  const h = hourNow();
+  if (seen()) {
+    if ((h >= 11.25 && h < 12) || (h >= 18.25 && h < 19)) { if (sayOnce(h < 15 ? 'trua' : 'toi', pick(['Đói quá, mọi người ăn cơm chưa?', 'Bụng Bi kêu ọc ọc rồi, sắp đến giờ cơm chưa ạ?']))) { idleAct.next = t + 60000; return; } }
+    if (h >= 22 && h < 22.75) { if (sayOnce('ngu', 'Bi buồn ngủ quá, chúc cả nhà ngủ ngon nhé!')) { setExpr('sleepy', 3000); return; } }
+  }
+  if (t < idleAct.next) return;
+  idleAct.next = t + rand(60000, 150000);
+  runTrick();
+}
+let inviteLog = {};
+try { inviteLog = JSON.parse(localStorage.getItem('k40invite') || '{}'); } catch (e) {}
+function tryInvite(force) {
+  const h = hourNow();
+  if (!force && (!S.invite || !S.key || S.act !== 'always' || h < 8 || h >= 21 || live.ready || live.connecting || state.sleep)) return false;
+  if (!vision.present || !vision.names.size) return false;
+  if (!force && now() - state.lastTouch < 240000) return false;
+  const T0 = Date.now();
+  if (!force && T0 - (inviteLog['*'] || 0) < 30 * 60000) return false;
+  const who = [...vision.names].filter(n => force || T0 - (inviteLog[n] || 0) > 60 * 60000);
+  if (!who.length) return false;
+  const n = pick(who); inviteLog[n] = inviteLog['*'] = T0;
+  try { localStorage.setItem('k40invite', JSON.stringify(inviteLog)); } catch (e) {}
+  cancelIdle(); state.lastTouch = now(); setExpr('happy', 1500); SFX.wake();
+  live.pending = `${n} đang ở gần bạn một lúc rồi mà chưa ai nói chuyện với bạn. Hãy chủ động rủ ${n} bằng đúng 1 câu ngắn, vui, hợp tuổi và sở thích của ${n}. Chọn một kiểu: đố vui, kể một chuyện cười hoặc chuyện ngắn, hỏi lại một chuyện trong sổ ký ức của ${n}, hoặc kể một điều thú vị. Nếu ${n} có vẻ bận hoặc không trả lời thì thôi, đừng nói tiếp.`;
+  live.greetOnly = true; startLive();
+  return true;
+}
+function weatherDone() { const sl = slot(); return !sl || greetLog['#weather'] === sl.key; }
+
+/* ---------------- Sạc tự động (app quyết định, ESP32 bật/tắt nguồn sạc) ---------------- */
+const chg = {bat: null, want: null, lastSend: 0};
+try { navigator.getBattery?.().then(b => { chg.bat = b; b.addEventListener('levelchange', () => chgSync()); b.addEventListener('chargingchange', () => { chgSync(); showTel(); }); }).catch(() => {}); } catch (e) {}
+function chgSync(force) {
+  let want = 1;
+  if (S.autoChg && chg.bat) {
+    const lvl = Math.round(chg.bat.level * 100);
+    if (lvl >= S.chgHi) want = 0; else if (lvl <= S.chgLo) want = 1; else want = chg.want ?? 1;
+  }
+  const changed = want !== chg.want; chg.want = want;
+  if (robot.ok && (changed || force || now() - chg.lastSend > 30000)) { chg.lastSend = now(); robot.send('C,' + want); }
+}
+function chgText() {
+  if (!chg.bat) return 'không đọc được pin điện thoại';
+  const lvl = Math.round(chg.bat.level * 100);
+  return `điện thoại ${lvl}%${chg.bat.charging ? ' (đang sạc)' : ''}` + (S.autoChg ? (chg.want === 0 ? ' · đã ngắt sạc' : ' · cho phép sạc') : '');
+}
+setInterval(() => chgSync(), 30000);
+
+window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people, state, idleAct, runTrick, tod, chg, invite: tryInvite, robot, goDeep};
 window.__forceSleep = () => { goSleep(); };
 requestAnimationFrame(frame);
 }
