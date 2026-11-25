@@ -83,24 +83,31 @@ h3{font-size:18px;font-weight:600;margin:26px 0 6px}
   <label class="chk"><input type="checkbox" id="sTouchAI"> Robot nói khi bị chạm (lúc đang trò chuyện)</label>
   <div class="row"><label for="sFam">Robot nên biết gì về gia đình (tên mọi người, sở thích, ngày đặc biệt…)</label><textarea id="sFam" placeholder="Ví dụ: Bố tên Hùng, thích bóng đá. Mẹ tên Lan. Bé Na 6 tuổi, thích khủng long."></textarea></div>
   <h3>Lúc rảnh</h3>
-  <label class="chk"><input type="checkbox" id="sIdle"> Bi tự chơi khi rảnh (ngáp, đuổi ruồi, hát, thổi bong bóng…), buồn ngủ theo giờ trong ngày</label>
-  <label class="chk"><input type="checkbox" id="sInvite"> Thỉnh thoảng Bi rủ người đang ở gần chơi (mỗi người tối đa 1 lần/giờ, 8h–21h, chỉ ở chế độ Luôn hoạt động; tốn lượt Gemini)</label>
-  <div class="row"><label for="sCity">Nơi ở (để Bi báo thời tiết khi chào buổi sáng, bỏ trống nếu không cần)</label><input id="sCity" placeholder="Ví dụ: Hà Nội" autocomplete="off"></div>
+  <label class="chk"><input type="checkbox" id="sIdle"> Mi tự chơi khi rảnh (ngáp, đuổi ruồi, hát, thổi bong bóng…), buồn ngủ theo giờ trong ngày</label>
+  <label class="chk"><input type="checkbox" id="sInvite"> Thỉnh thoảng Mi rủ người đang ở gần chơi (mỗi người tối đa 1 lần/giờ, 8h–21h, chỉ ở chế độ Luôn hoạt động; tốn lượt Gemini)</label>
+  <div class="row"><label for="sCity">Nơi ở (để Mi báo thời tiết khi chào buổi sáng, bỏ trống nếu không cần)</label><input id="sCity" placeholder="Ví dụ: Hà Nội" autocomplete="off"></div>
+  <h3>Gọi "Mi ơi"</h3>
+  <p class="note">Dạy Mi nhận tiếng gọi. Mọi thứ chạy trên máy này, âm thanh không gửi đi đâu. Mỗi người trong nhà bấm "Ghi Mi ơi" rồi nói "Mi ơi" ngay sau khi bấm, làm khoảng 10 lần, đứng gần và xa khác nhau. Ghi tiếng ồn nền 2–3 lần (bật tivi, quạt như bình thường, không ai nói). Ghi câu nói khác khoảng 10 lần (nói linh tinh: "đi đâu", "ăn cơm", "bố ơi"…). Xong bấm Huấn luyện.</p>
+  <label class="chk"><input type="checkbox" id="sWake"> Luôn nghe tiếng gọi "Mi ơi" (ban ngày, chế độ Luôn hoạt động; Android sẽ hiện chấm xanh mic)</label>
+  <div class="btns"><button id="wYes">Ghi "Mi ơi"</button><button id="wOther">Ghi câu nói khác</button><button id="wNoise">Ghi tiếng ồn nền (10 giây)</button></div>
+  <div class="btns"><button id="wTrain">Huấn luyện</button><button id="wClear">Xóa dữ liệu giọng</button></div>
+  <div class="row"><label for="sWakeTh">Độ chắc chắn khi nhận tiếng gọi (thấp = dễ nghe thấy nhưng hay nhầm, cao = ít nhầm nhưng phải gọi rõ)</label><input id="sWakeTh" type="range" min="70" max="98" step="1"></div>
+  <div class="tel" id="wStat">Chưa có dữ liệu giọng</div>
   <h3>Camera</h3>
   <div class="row"><label for="sAct">Chế độ hoạt động</label>
    <select id="sAct"><option value="always">Luôn hoạt động: camera bật, thấy người thì tự chào</option><option value="touch">Chạm mới hoạt động: ngủ và tắt camera, chạm vào mới thức dậy</option></select></div>
   <label class="chk"><input type="checkbox" id="sCam"> Dùng camera trước (mắt nhìn theo người, nhận người quen)</label>
-  <label class="chk"><input type="checkbox" id="sCamOv"> Hiện hình camera khi Bi đang chụp làm quen người mới</label>
-  <label class="chk"><input type="checkbox" id="sCamAI"> Cho Gemini nhìn qua camera khi được nhờ (hỏi "đây là cái gì" thì Bi chụp 1 ảnh gửi lên)</label>
+  <label class="chk"><input type="checkbox" id="sCamOv"> Hiện hình camera khi Mi đang chụp làm quen người mới</label>
+  <label class="chk"><input type="checkbox" id="sCamAI"> Cho Gemini nhìn qua camera khi được nhờ (hỏi "đây là cái gì" thì Mi chụp 1 ảnh gửi lên)</label>
   <label class="chk"><input type="checkbox" id="sFollow"> Quay người theo người đang nói chuyện (khi có thân xe)</label>
   <video id="pv" playsinline muted autoplay></video>
   <div class="tel" id="vStat">Camera: đang tắt</div>
   <h3>Báo thức và nhắc việc</h3>
-  <p class="note">Nói với Bi, ví dụ: "6 giờ sáng mai gọi anh dậy", "10 phút nữa nhắc chị tắt bếp", "8 giờ tối hằng ngày nhắc bà đi ngủ". Báo thức chỉ kêu khi app đang mở trên màn hình.</p>
+  <p class="note">Nói với Mi, ví dụ: "6 giờ sáng mai gọi anh dậy", "10 phút nữa nhắc chị tắt bếp", "8 giờ tối hằng ngày nhắc bà đi ngủ". Báo thức chỉ kêu khi app đang mở trên màn hình.</p>
   <div id="rList"></div>
-  <h3>Sổ ký ức của Bi</h3>
-  <p class="note">Sau mỗi lần trò chuyện, Bi tự ghi vài điều đáng nhớ để lần sau hỏi lại. Chỉ lưu trong máy này; khi trò chuyện, sổ được gửi kèm cho Gemini.</p>
-  <label class="chk"><input type="checkbox" id="sMem"> Cho Bi tự ghi nhớ sau mỗi lần trò chuyện</label>
+  <h3>Sổ ký ức của Mi</h3>
+  <p class="note">Sau mỗi lần trò chuyện, Mi tự ghi vài điều đáng nhớ để lần sau hỏi lại. Chỉ lưu trong máy này; khi trò chuyện, sổ được gửi kèm cho Gemini.</p>
+  <label class="chk"><input type="checkbox" id="sMem"> Cho Mi tự ghi nhớ sau mỗi lần trò chuyện</label>
   <div class="row"><label for="sMemModel">Mô hình dùng để tóm tắt</label><input id="sMemModel" spellcheck="false"></div>
   <div id="mList"></div>
   <div class="btns"><button id="bMemTidy">Dọn sổ ngay</button><button id="bMemClear">Xóa hết sổ ký ức</button></div>
@@ -114,8 +121,8 @@ h3{font-size:18px;font-weight:600;margin:26px 0 6px}
   <div class="tel" id="tel">Thân xe: chưa kết nối</div>
   <label class="chk"><input type="checkbox" id="sAutoChg"> Tự ngắt sạc để giữ pin điện thoại bền (cần thân xe)</label>
   <div class="inl"><label for="sChgLo">Sạc lại khi pin còn</label><input id="sChgLo" type="number" min="20" max="70" style="width:5em">%<label for="sChgHi">ngắt khi đầy</label><input id="sChgHi" type="number" min="50" max="100" style="width:5em">%</div>
-  <p class="note">Ngủ sâu: không có ai khoảng 3 phút sau khi Bi ngủ thì màn hình đen hẳn. Khi có thân xe, camera tắt luôn và cảm biến chuyển động sẽ đánh thức Bi (ban đêm 23h–5h thì không). Khi chưa có thân xe, camera vẫn dò người rất chậm để đánh thức. Chạm vào màn hình luôn đánh thức được.</p>
-  <p class="note"><b>Phiên bản app: 5.5.1</b></p>
+  <p class="note">Ngủ sâu: không có ai khoảng 3 phút sau khi Mi ngủ thì màn hình đen hẳn. Khi có thân xe, camera tắt luôn và cảm biến chuyển động sẽ đánh thức Mi (ban đêm 23h–5h thì không). Khi chưa có thân xe, camera vẫn dò người rất chậm để đánh thức. Chạm vào màn hình luôn đánh thức được.</p>
+  <p class="note"><b>Phiên bản app: 5.6</b></p>
   <p class="note">Khóa API chỉ lưu trong trình duyệt của máy này. Đừng chia sẻ link trang có sẵn khóa cho người ngoài.</p>
  </div>
 </div>
@@ -128,9 +135,10 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- Cài đặt ---------------- */
-const DEF = {name: 'Bi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, act: 'always', camAI: true, follow: true, mouth: true, mem: true, memModel: 'gemini-flash-latest', camOv: true, idle: true, invite: true, city: '', autoChg: true, chgLo: 40, chgHi: 80};
+const DEF = {name: 'Mi', key: '', model: 'gemini-3.8-live', voice: 'Puck', mode: 'free', barge: false, cap: true, touchAI: true, fam: '', cam: true, act: 'always', camAI: true, follow: true, mouth: true, mem: true, memModel: 'gemini-flash-latest', camOv: true, wake: false, wakeTh: 90, idle: true, invite: true, city: '', autoChg: true, chgLo: 40, chgHi: 80};
 let S = {...DEF};
 try { S = {...DEF, ...JSON.parse(localStorage.getItem('k40robot') || '{}')}; } catch (e) {}
+if (S.name === 'Bi') S.name = 'Mi';   // doi ten robot: Bi -> Mi
 const saveS = () => { try { localStorage.setItem('k40robot', JSON.stringify(S)); } catch (e) {} };
 
 /* ---------------- Tiện ích hiển thị ---------------- */
@@ -435,7 +443,7 @@ function onTap(x, y) {
 function onDoubleTap() {
   state.lastTouch = now(); live.greetOnly = false;
   if (state.sleep) { wakeIfSleeping(); }
-  if (live.ready || live.connecting) { stopLive(); setExpr('happy', 1200); caption('Tạm biệt, cần gì cứ gọi Bi nhé!', 2500); say('Tạm biệt!'); return; }
+  if (live.ready || live.connecting) { stopLive(); setExpr('happy', 1200); caption('Tạm biệt, cần gì cứ gọi Mi nhé!', 2500); say('Tạm biệt!'); return; }
   setExpr('surprised', 700); SFX.wake();
   startLive();
 }
@@ -521,13 +529,13 @@ const TOOLS = [{functionDeclarations: [
   {name: 'move', description: 'Lái thân xe robot một đoạn ngắn. Chỉ dùng khi người dùng bảo robot di chuyển.',
    parameters: {type: 'OBJECT', properties: {action: {type: 'STRING', enum: ['tien', 'lui', 'quay_trai', 'quay_phai', 'dung']}, seconds: {type: 'NUMBER', description: 'Thời gian, tối đa 3 giây'}}, required: ['action']}},
   {name: 'nhin_camera', description: 'Chụp 1 ảnh từ camera trước mặt để nhìn. Chỉ gọi khi người dùng nhờ nhìn hoặc hỏi về thứ đang ở trước mặt.', parameters: {type: 'OBJECT', properties: {}}},
-  {name: 'remember_person', description: 'Chụp và ghi nhớ khuôn mặt người đang đứng trước camera. Chỉ gọi khi người dùng nói rõ muốn Bi nhớ mặt hoặc nhận diện ai đó, ví dụ "nhớ mặt bé Na nhé", "làm quen với chị Uyên đi". Người chỉ tự giới thiệu tên thì KHÔNG gọi.',
+  {name: 'remember_person', description: 'Chụp và ghi nhớ khuôn mặt người đang đứng trước camera. Chỉ gọi khi người dùng nói rõ muốn Mi nhớ mặt hoặc nhận diện ai đó, ví dụ "nhớ mặt bé Na nhé", "làm quen với chị Uyên đi". Người chỉ tự giới thiệu tên thì KHÔNG gọi.',
    parameters: {type: 'OBJECT', properties: {name: {type: 'STRING', description: 'Tên để gọi người đó'}}, required: ['name']}},
   {name: 'who_is_here', description: 'Hỏi xem camera đang thấy những ai (người quen thì có tên).', parameters: {type: 'OBJECT', properties: {}}},
   {name: 'set_reminder', description: 'Đặt báo thức, hẹn giờ hoặc nhắc việc. Dùng minutes_from_now cho kiểu "10 phút nữa"; dùng at_time (HH:MM, 24 giờ) và date (YYYY-MM-DD, bỏ trống nếu là lần tới gần nhất) cho giờ cụ thể.',
    parameters: {type: 'OBJECT', properties: {
      message: {type: 'STRING', description: 'Nội dung cần nhắc, ví dụ: dậy đi làm, tắt bếp, uống nước'},
-     who: {type: 'STRING', description: 'Nhắc ai (tên như cách Bi gọi), bỏ trống nếu cả nhà'},
+     who: {type: 'STRING', description: 'Nhắc ai (tên như cách Mi gọi), bỏ trống nếu cả nhà'},
      minutes_from_now: {type: 'NUMBER'}, at_time: {type: 'STRING'}, date: {type: 'STRING'},
      repeat: {type: 'STRING', enum: ['khong', 'hang_ngay']},
      kind: {type: 'STRING', enum: ['bao_thuc', 'nhac_viec', 'hen_gio']}}, required: ['message']}},
@@ -548,8 +556,8 @@ Thường xuyên gọi công cụ set_expression để mặt hợp với cảm x
 Khi thấy dòng bắt đầu bằng [Sự kiện: ...] thì đó là việc người dùng vừa chạm vào mặt bạn: phản ứng thật ngắn, dễ thương, đừng nhắc tới chữ "sự kiện".
 Nếu công cụ báo lỗi (ví dụ thân xe chưa kết nối) thì nói thật là chưa làm được.
 ${S.camAI && S.cam ? 'Bạn có camera trước mặt nhưng chỉ thấy khi gọi công cụ nhin_camera (mỗi lần chụp 1 ảnh). Chỉ gọi khi người dùng nhờ nhìn hoặc hỏi về thứ trước mặt, ví dụ "đây là cái gì", "nhìn xem mình mặc gì", "đọc giúp chữ này". Không tự gọi khi không được nhờ.' : ''}
-Bạn không tự nhận ra ai từ ảnh; tên người do hệ thống nhận diện khuôn mặt của bạn cho biết qua dòng [Sự kiện: ...] hoặc công cụ who_is_here. Chỉ khi người dùng nói rõ muốn bạn nhớ mặt hoặc nhận diện ai đó thì mới gọi remember_person với đúng tên. Người lạ chỉ tự giới thiệu tên thì gọi tên họ trong câu chuyện, không chụp mặt; có thể hỏi họ có muốn Bi nhớ mặt không.
-Khi [Sự kiện] báo người nhà vừa xuất hiện: chào bằng tên rồi hỏi han một câu ngắn, đổi cách hỏi cho đỡ nhàm, ví dụ: đi đâu về thế, chuẩn bị đi đâu thế, hôm nay có gì vui kể Bi nghe với, hay rủ chơi với Bi một chút. Gặp bà thì hỏi thăm, động viên bà. Khi báo người lạ: chào một câu rồi hỏi bạn là ai thế; nếu họ giới thiệu tên và muốn được nhớ thì gọi remember_person. Nếu đang gần dịp đặc biệt (Tết Nguyên đán, Trung thu, Giáng sinh, Tết dương lịch, hoặc sinh nhật ai trong gia đình) thì chúc cho phù hợp.
+Bạn không tự nhận ra ai từ ảnh; tên người do hệ thống nhận diện khuôn mặt của bạn cho biết qua dòng [Sự kiện: ...] hoặc công cụ who_is_here. Chỉ khi người dùng nói rõ muốn bạn nhớ mặt hoặc nhận diện ai đó thì mới gọi remember_person với đúng tên. Người lạ chỉ tự giới thiệu tên thì gọi tên họ trong câu chuyện, không chụp mặt; có thể hỏi họ có muốn Mi nhớ mặt không.
+Khi [Sự kiện] báo người nhà vừa xuất hiện: chào bằng tên rồi hỏi han một câu ngắn, đổi cách hỏi cho đỡ nhàm, ví dụ: đi đâu về thế, chuẩn bị đi đâu thế, hôm nay có gì vui kể Mi nghe với, hay rủ chơi với Mi một chút. Gặp bà thì hỏi thăm, động viên bà. Khi báo người lạ: chào một câu rồi hỏi bạn là ai thế; nếu họ giới thiệu tên và muốn được nhớ thì gọi remember_person. Nếu đang gần dịp đặc biệt (Tết Nguyên đán, Trung thu, Giáng sinh, Tết dương lịch, hoặc sinh nhật ai trong gia đình) thì chúc cho phù hợp.
 Người nhà bạn đã quen mặt: ${Object.keys(people).join(', ') || 'chưa có ai'}.
 Khi được hỏi thông tin đang thay đổi (thời tiết, tin tức, tỉ số và lịch thi đấu bóng đá, bóng chuyền, giá cả, sự kiện gần đây) thì tìm trên Google rồi trả lời ngắn gọn, nói rõ là vừa tra.
 Khi được nhờ báo thức, hẹn giờ, nhắc việc thì gọi set_reminder, rồi nhắc lại giờ và nội dung cho người dùng nghe để chắc chắn. Muốn sửa hay hủy thì dùng list_reminders và cancel_reminder.
@@ -561,9 +569,10 @@ ${S.fam ? 'Những điều bạn biết về gia đình:\n' + S.fam : ''}`;
 async function startLive() {
   if (!S.key) { toast('Chưa có khóa API Gemini. Giữ 3 giây ở góc trên bên trái để mở cài đặt.', 5000); setExpr('sad', 1500); return; }
   if (live.connecting || live.ready) return;
-  if (cooling()) { const s2 = Math.ceil((live.coolUntil - now()) / 1000); toast(`Bi đang nghỉ, khoảng ${s2} giây nữa mới trò chuyện lại được`, 3500); setExpr('sleepy', 1500); return; }
+  if (cooling()) { const s2 = Math.ceil((live.coolUntil - now()) / 1000); toast(`Mi đang nghỉ, khoảng ${s2} giây nữa mới trò chuyện lại được`, 3500); setExpr('sleepy', 1500); return; }
   if (live.ws) { try { live.ws.close(1000); } catch (e) {} live.ws = null; }
   live.connecting = true; cancelIdle(); wakeUp(); live.log = [];
+  if (wake.listening) await wake.stop();
   try {
     const c = ac();
     live.stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1}});
@@ -608,7 +617,7 @@ function onLiveError(code, reason) {
   const quota = /quota|exhaust|rate|429|too many/i.test(reason) || code === 1011 && /quota/i.test(reason);
   try { const L = JSON.parse(localStorage.getItem('k40err') || '[]'); L.unshift({t: new Date().toLocaleString('vi-VN'), code, reason}); localStorage.setItem('k40err', JSON.stringify(L.slice(0, 5))); } catch (e) {}
   setExpr('sad', 2000);
-  if (quota) { live.coolUntil = now() + 180000; toast('Gemini báo hết lượt hoặc quá tải. Bi nghỉ 3 phút rồi trò chuyện lại được.', 6000); const l = 'Bi mệt quá, nghỉ chút nhé!'; caption(l, 3000); say(l); }
+  if (quota) { live.coolUntil = now() + 180000; toast('Gemini báo hết lượt hoặc quá tải. Mi nghỉ 3 phút rồi trò chuyện lại được.', 6000); const l = 'Mi mệt quá, nghỉ chút nhé!'; caption(l, 3000); say(l); }
   else toast('Mất kết nối với Gemini (mã ' + code + '). Chạm 2 lần để thử lại.', 5000);
 }
 function renderErr() {
@@ -655,7 +664,7 @@ function onServer(m) {
   if (sc.interrupted) player.stop();
   for (const p of (sc.modelTurn && sc.modelTurn.parts) || []) if (p.inlineData && p.inlineData.data) player.push(p.inlineData.data);
   if (sc.outputTranscription && sc.outputTranscription.text && live.inBuf) flushIn();
-  if (sc.outputTranscription && sc.outputTranscription.text) { logTurn('Bi', sc.outputTranscription.text); live.outText += sc.outputTranscription.text; caption(live.outText.slice(-140), 5000); }
+  if (sc.outputTranscription && sc.outputTranscription.text) { logTurn('Mi', sc.outputTranscription.text); live.outText += sc.outputTranscription.text; caption(live.outText.slice(-140), 5000); }
   if (sc.inputTranscription && sc.inputTranscription.text) { live.inBuf += sc.inputTranscription.text; live.greetOnly = false; live.outText = ''; if (isVi(live.inBuf)) caption('Bạn: ' + live.inBuf.slice(-140), 2500); }
   if ((sc.outputTranscription && sc.outputTranscription.text) || (sc.modelTurn && sc.modelTurn.parts) || sc.turnComplete || sc.interrupted) flushIn();
   if (sc.turnComplete) live.outText = '';
@@ -794,14 +803,14 @@ function endSessionMemory() {
   if (!S.mem || !S.key) return;
   const userTurns = log.filter(l => l.role === 'nguoi' && l.text.trim().length > 3);
   if (userTurns.length < 2) return;
-  const convo = log.map(l => (l.role === 'Bi' ? 'Bi: ' : `Người nói${l.who ? ' (có thể là ' + l.who + ')' : ''}: `) + l.text.trim()).join('\n').slice(-8000);
+  const convo = log.map(l => (l.role === 'Mi' ? 'Mi: ' : `Người nói${l.who ? ' (có thể là ' + l.who + ')' : ''}: `) + l.text.trim()).join('\n').slice(-8000);
   const prompt = `Bạn giúp robot ${S.name} ghi sổ ký ức về gia đình. Đọc đoạn hội thoại dưới đây và chỉ ghi những điều đáng nhớ lâu dài hoặc nên hỏi thăm lại sau: kế hoạch, sự kiện sắp tới, chuyện vui buồn quan trọng, sở thích mới, lời dặn. Bỏ qua chuyện vặt, câu chào hỏi, câu hỏi kiến thức. Mỗi ghi chú một câu ngắn, ghi rõ thời điểm nếu có (hôm nay là ${today()}). Nếu không có gì đáng nhớ thì trả về danh sách rỗng.
 Người nhà: ${Object.keys(people).join(', ') || 'chưa rõ'}. Thông tin gia đình: ${S.fam.slice(0, 1500)}
 Trả về JSON đúng dạng {"notes":[{"who":"tên người hoặc chung","note":"..."}]}.
 
 Hội thoại:
 ${convo}`;
-  geminiJSON(prompt).then(data => { if (data.notes && data.notes.length) { addNotes(data.notes); caption('Bi đã ghi nhớ ' + data.notes.length + ' điều', 2500); } }).catch(() => {}).finally(() => setTimeout(() => tidyMemory(false), 5000));
+  geminiJSON(prompt).then(data => { if (data.notes && data.notes.length) { addNotes(data.notes); caption('Mi đã ghi nhớ ' + data.notes.length + ' điều', 2500); } }).catch(() => {}).finally(() => setTimeout(() => tidyMemory(false), 5000));
 }
 function renderMem() {
   const el = $('#mList'); if (!el) return; el.textContent = '';
@@ -1076,7 +1085,7 @@ const vision = {
       await new Promise(r => setTimeout(r, 250));
     }
     this.enrolling = false;
-    this.showOv(got.length >= 2 ? `Bi nhớ mặt ${name} rồi!` : 'Chưa chụp được, thử lại ở chỗ sáng hơn nhé', 2000);
+    this.showOv(got.length >= 2 ? `Mi nhớ mặt ${name} rồi!` : 'Chưa chụp được, thử lại ở chỗ sáng hơn nhé', 2000);
     if (got.length < 2) return {result: 'error', note: 'Không thấy rõ mặt ai trước camera'};
     people[name] = (people[name] || []).concat(got).slice(-12); savePeople(); renderPeople();
     this.names.add(name); const sl = slot(); if (sl) { greetLog[name] = sl.key; saveGreet(); } this.recNeed = 0;
@@ -1161,15 +1170,16 @@ function openSettings() {
   stopPTTIfAny();
   $('#sName').value = S.name; $('#sKey').value = S.key; $('#sModel').value = S.model; $('#sVoice').value = S.voice; $('#sMode').value = S.mode;
   $('#sBarge').checked = S.barge; $('#sCap').checked = S.cap; $('#sTouchAI').checked = S.touchAI; $('#sFam').value = S.fam;
-  $('#sCam').checked = S.cam; $('#sAct').value = S.act; $('#sMouth').checked = S.mouth; $('#sMem').checked = S.mem; $('#sCamOv').checked = S.camOv; $('#sMemModel').value = S.memModel; renderMem(); renderRem(); $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; $('#sIdle').checked = S.idle; $('#sInvite').checked = S.invite; $('#sCity').value = S.city; $('#sAutoChg').checked = S.autoChg; $('#sChgLo').value = S.chgLo; $('#sChgHi').value = S.chgHi; renderPeople();
+  $('#sCam').checked = S.cam; $('#sAct').value = S.act; $('#sMouth').checked = S.mouth; $('#sMem').checked = S.mem; $('#sCamOv').checked = S.camOv; $('#sMemModel').value = S.memModel; renderMem(); renderRem(); $('#sCamAI').checked = S.camAI; $('#sFollow').checked = S.follow; $('#sWake').checked = S.wake; $('#sWakeTh').value = S.wakeTh; wake.init().then(renderWake).catch(e => wStat('Chưa tải được bộ nghe: ' + e.message)); $('#sIdle').checked = S.idle; $('#sInvite').checked = S.invite; $('#sCity').value = S.city; $('#sAutoChg').checked = S.autoChg; $('#sChgLo').value = S.chgLo; $('#sChgHi').value = S.chgHi; renderPeople();
   if (S.cam && !vision.on) vision.start();
   showTel(); renderErr(); $('#set').classList.add('on');
 }
 function stopPTTIfAny() { if (touch.ptt) stopPTT(); }
 function readSettings() {
-  S.name = $('#sName').value.trim() || 'Bi'; S.key = $('#sKey').value.trim(); S.model = $('#sModel').value.trim() || DEF.model;
+  S.name = $('#sName').value.trim() || 'Mi'; S.key = $('#sKey').value.trim(); S.model = $('#sModel').value.trim() || DEF.model;
   S.voice = $('#sVoice').value; S.mode = $('#sMode').value; S.barge = $('#sBarge').checked; S.cap = $('#sCap').checked; S.touchAI = $('#sTouchAI').checked; S.fam = $('#sFam').value.trim();
   S.cam = $('#sCam').checked; S.act = $('#sAct').value; S.mouth = $('#sMouth').checked; S.mem = $('#sMem').checked; S.camOv = $('#sCamOv').checked; S.memModel = $('#sMemModel').value.trim() || DEF.memModel; S.camAI = $('#sCamAI').checked; S.follow = $('#sFollow').checked;
+  S.wake = $('#sWake').checked; S.wakeTh = +$('#sWakeTh').value || 90; if (wake.listening) wake.stop();
   S.idle = $('#sIdle').checked; S.invite = $('#sInvite').checked; S.city = $('#sCity').value.trim(); S.autoChg = $('#sAutoChg').checked;
   S.chgLo = clamp(+$('#sChgLo').value || 40, 20, 70); S.chgHi = clamp(+$('#sChgHi').value || 80, S.chgLo + 10, 100); chgSync(true);
   syncCam();
@@ -1246,12 +1256,12 @@ const TRICKS = {
     setExpr('thinking', 900); chirp(500, 700, .5, 'sine', .07);
     later(700, () => { setExpr('yawn', 500); chirp(600, 900, .4, 'triangle', .08); });
     later(1300, () => { setExpr('wince', 500); burst('bang', 1); chirp(1400, 250, .25, 'square', .08); if (seen()) say('Hắt xì!'); });
-    later(2000, () => { setExpr('shy', 1500); mutter(pick(['Ai nhắc Bi đấy nhỉ?', 'Hì, xin lỗi nha'])); });
+    later(2000, () => { setExpr('shy', 1500); mutter(pick(['Ai nhắc Mi đấy nhỉ?', 'Hì, xin lỗi nha'])); });
     finish(3700);
   },
   mumble() {
     if (!seen()) return TRICKS.look();
-    setExpr('thinking', 1600); later(500, () => mutter(pick(['Chán quá đi…', 'Không ai chơi với Bi à?', 'Bi đang nghĩ xem hôm nay làm gì vui…', 'Hôm nay trời thế nào nhỉ?']))); finish(2600);
+    setExpr('thinking', 1600); later(500, () => mutter(pick(['Chán quá đi…', 'Không ai chơi với Mi à?', 'Mi đang nghĩ xem hôm nay làm gì vui…', 'Hôm nay trời thế nào nhỉ?']))); finish(2600);
   },
   ngong() { const side = Math.random() < .5 ? -1 : 1; setExpr('sad', 3000); lookAt(side * .95, 0, 3000); later(3100, () => { burst('q', 1); mutter('Sao mọi người chưa về nhỉ?'); }); finish(4000); }
 };
@@ -1276,8 +1286,8 @@ function idleTick(t) {
   if (idleAct.busy || t - state.lastTouch < 15000) return;
   const h = hourNow();
   if (seen()) {
-    if ((h >= 11.25 && h < 12) || (h >= 18.25 && h < 19)) { if (sayOnce(h < 15 ? 'trua' : 'toi', pick(['Đói quá, mọi người ăn cơm chưa?', 'Bụng Bi kêu ọc ọc rồi, sắp đến giờ cơm chưa ạ?']))) { idleAct.next = t + 60000; return; } }
-    if (h >= 22 && h < 22.75) { if (sayOnce('ngu', 'Bi buồn ngủ quá, chúc cả nhà ngủ ngon nhé!')) { setExpr('sleepy', 3000); return; } }
+    if ((h >= 11.25 && h < 12) || (h >= 18.25 && h < 19)) { if (sayOnce(h < 15 ? 'trua' : 'toi', pick(['Đói quá, mọi người ăn cơm chưa?', 'Bụng Mi kêu ọc ọc rồi, sắp đến giờ cơm chưa ạ?']))) { idleAct.next = t + 60000; return; } }
+    if (h >= 22 && h < 22.75) { if (sayOnce('ngu', 'Mi buồn ngủ quá, chúc cả nhà ngủ ngon nhé!')) { setExpr('sleepy', 3000); return; } }
   }
   if (t < idleAct.next) return;
   idleAct.next = t + rand(60000, 150000);
@@ -1322,7 +1332,104 @@ function chgText() {
 }
 setInterval(() => chgSync(), 30000);
 
-window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people, state, live, idleMs, idleAct, runTrick, tod, chg, invite: tryInvite, robot, goDeep};
+/* ---------------- Gọi "Mi ơi": nhận tiếng gọi ngay trên máy (TensorFlow.js speech-commands, học từ giọng người nhà) ---------------- */
+const idb = {
+  db() { return this._db || (this._db = new Promise((res, rej) => { const r = indexedDB.open('k40', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async get(k) { const d = await this.db(); return new Promise(res => { const q = d.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); },
+  async put(k, v) { const d = await this.db(); return new Promise(res => { const tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = res; }); },
+  async del(k) { const d = await this.db(); return new Promise(res => { const tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(k); tx.oncomplete = res; tx.onerror = res; }); }
+};
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Không tải được ' + src)); document.head.appendChild(s); }); }
+const WK = {goi: 'goi', khac: 'khac', noise: '_background_noise_'};
+const wake = {
+  base: null, tr: null, ready: false, listening: false, busy: false, lastHit: 0, err: '',
+  async lib() {
+    if (window.speechCommands) return;
+    wStat('Đang tải bộ nghe (khoảng 6 MB, chỉ lần đầu)…');
+    if (!window.tf) await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js');
+  },
+  async init() {
+    await this.lib();
+    if (!this.base) { this.base = speechCommands.create('BROWSER_FFT'); await this.base.ensureModelLoaded(); }
+    if (!this.tr) {
+      this.tr = this.base.createTransfer('k40goi');
+      const buf = await idb.get('wakeEx'); if (buf) { try { this.tr.loadExamples(buf, true); } catch (e) {} }
+      if (localStorage.getItem('k40wakeModel')) { try { await this.tr.load(); this.ready = true; } catch (e) { this.ready = false; } }
+    }
+  },
+  counts() { try { return this.tr ? this.tr.countExamples() : {}; } catch (e) { return {}; } },
+  async collect(label, opts) {
+    if (this.busy) return; this.busy = true; await this.stop();
+    try { await this.init(); await this.tr.collectExample(label, opts || {}); await idb.put('wakeEx', this.tr.serializeExamples()); }
+    catch (e) { wStat('Lỗi khi ghi âm: ' + (e.message || e)); this.busy = false; return; }
+    this.busy = false; renderWake();
+  },
+  async train() {
+    const c = this.counts();
+    if ((c[WK.goi] || 0) < 8 || (c[WK.noise] || 0) < 1) { wStat('Cần ít nhất 8 lần "' + S.name + ' ơi" và 1 lần tiếng ồn nền'); return; }
+    if (this.busy) return; this.busy = true; await this.stop();
+    try {
+      await this.tr.train({epochs: 30, callback: {onEpochEnd: (ep, logs) => wStat(`Đang huấn luyện ${ep + 1}/30 · độ chính xác ${Math.round((logs.acc || 0) * 100)}%`)}});
+      await this.tr.save(); localStorage.setItem('k40wakeModel', '1'); this.ready = true;
+      wStat('Đã học xong. Bật "Luôn nghe tiếng gọi" rồi thử gọi nhé.');
+    } catch (e) { wStat('Lỗi huấn luyện: ' + (e.message || e)); }
+    this.busy = false;
+  },
+  async clear() {
+    await this.stop(); await idb.del('wakeEx'); localStorage.removeItem('k40wakeModel');
+    try { indexedDB.deleteDatabase('tensorflowjs'); } catch (e) {}
+    this.tr = null; this.ready = false; S.wake = false; saveS(); $('#sWake').checked = false; renderWake();
+  },
+  async start() {
+    if (this.listening || this.busy) return;
+    try {
+      await this.init(); if (!this.ready) return;
+      await this.tr.listen(r => this.onResult(r), {probabilityThreshold: S.wakeTh / 100, overlapFactor: 0.5, suppressionTimeMillis: 1500, invokeCallbackOnNoiseAndUnknown: false});
+      this.listening = true; this.err = '';
+    } catch (e) { this.err = e.message || String(e); }
+  },
+  async stop() { if (this.listening) { this.listening = false; try { await this.tr.stopListening(); } catch (e) {} } },
+  onResult(r) {
+    const labels = this.tr.wordLabels(); let b = 0;
+    for (let i = 1; i < r.scores.length; i++) if (r.scores[i] > r.scores[b]) b = i;
+    if (labels[b] !== WK.goi || r.scores[b] < S.wakeTh / 100) return;
+    if (player.speaking() || speechSynthesis.speaking || live.ready || live.connecting || now() - this.lastHit < 4000) return;
+    this.lastHit = now(); onWake();
+  }
+};
+function wakeWanted() { return S.wake && wake.ready && firstDone && S.act === 'always' && !isNight() && !state.deep && !live.ready && !live.connecting && !touch.ptt && document.visibilityState === 'visible' && !wake.busy; }
+let wakeSyncing = false;
+setInterval(async () => {
+  if (wakeSyncing) return; wakeSyncing = true;
+  try { if (wakeWanted()) { if (!wake.listening) await wake.start(); } else if (wake.listening) await wake.stop(); } finally { wakeSyncing = false; }
+}, 1500);
+function onWake() {
+  cancelIdle(); state.lastTouch = now();
+  if (state.sleep) wakeUp();
+  setExpr('surprised', 700); SFX.wake(); burst('bang', 1);
+  const names = [...vision.names];
+  if (S.key && !cooling()) {
+    live.pending = `Có người vừa gọi "${S.name} ơi"${names.length ? ' (bạn đang thấy ' + names.join(', ') + ' trước mặt)' : ''}. Đáp lại thật ngắn kiểu "${S.name} đây!" rồi hỏi họ cần gì.`;
+    live.greetOnly = true; wake.stop().then(() => startLive());
+  } else { const l = S.name + ' đây!'; caption(l, 2500); say(l); }
+}
+function wStat(t) { const el = $('#wStat'); if (el) el.textContent = t; }
+function renderWake() {
+  const c = wake.counts();
+  wStat(`Đã ghi: "${S.name} ơi" ${c[WK.goi] || 0} lần · câu khác ${c[WK.khac] || 0} lần · tiếng ồn nền ${c[WK.noise] || 0} lần · ${wake.ready ? 'đã học xong' : 'chưa huấn luyện'}` + (wake.listening ? ' · đang nghe' : '') + (wake.err ? ' · lỗi: ' + wake.err : ''));
+}
+async function wakeBtn(btn, label, opts, sayText) {
+  firstGesture(); btn.disabled = true; const old = btn.textContent;
+  btn.textContent = sayText; await wake.collect(label, opts); btn.textContent = old; btn.disabled = false;
+}
+$('#wYes').addEventListener('click', e => wakeBtn(e.currentTarget, WK.goi, {}, `Nói "${S.name} ơi" ngay…`));
+$('#wOther').addEventListener('click', e => wakeBtn(e.currentTarget, WK.khac, {}, 'Nói một từ khác…'));
+$('#wNoise').addEventListener('click', e => wakeBtn(e.currentTarget, WK.noise, {durationSec: 10}, 'Đang ghi 10 giây, đừng nói gì…'));
+$('#wTrain').addEventListener('click', async e => { const b = e.currentTarget; b.disabled = true; await wake.init().catch(err => wStat('Lỗi: ' + err.message)); await wake.train(); b.disabled = false; renderWake(); });
+$('#wClear').addEventListener('click', e => { const b = e.currentTarget; if (b.dataset.arm) { delete b.dataset.arm; b.textContent = 'Xóa dữ liệu giọng'; wake.clear(); return; } b.dataset.arm = 1; b.textContent = 'Bấm lần nữa để xóa'; setTimeout(() => { delete b.dataset.arm; b.textContent = 'Xóa dữ liệu giọng'; }, 4000); });
+
+window.__k40 = {setExpr, nod, burst, S, mood, vision, people: () => people, wake, state, live, idleMs, idleAct, runTrick, tod, chg, invite: tryInvite, robot, goDeep};
 window.__forceSleep = () => { goSleep(); };
 requestAnimationFrame(frame);
 }
